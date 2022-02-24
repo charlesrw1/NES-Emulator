@@ -1,0 +1,131 @@
+﻿// NES-Emulator.cpp : Defines the entry point for the application.
+//
+
+#include "NES-Emulator.h"
+#include "cpu.h"
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <cassert>
+
+using namespace std;
+
+uint8_t peek_byte(CPU& c, uint8_t offset) 
+{
+	return c.read_byte(c.pc + offset);
+}
+uint8_t hex_from_str(string s)
+{
+	assert(s.size() == 2);
+	uint8_t res = (s.at(1)>='A')?(s.at(1)-'A'+10):(s.at(1) - '0');
+	uint8_t temp = (s.at(0) >= 'A') ? (s.at(0) - 'A'+10) : (s.at(0) - '0');
+	res |= temp << 4;
+
+	return res;
+
+}
+uint8_t get_cpu_status_register(CPU& c)
+{
+	uint8_t res = 0;
+	res |= (c.cf << 0);
+	res |= (c.zf << 1);
+	res |= (c.inf << 2);
+	res |= (c.df << 3);
+	res |= (0 << 4);
+	res |= (1 << 5);
+	res |= (c.vf << 6);
+	res |= (c.nf << 7);
+	return res;
+}
+void assert_log_and_cpu(CPU& c, std::string& log_line)
+{
+
+	stringstream ss, help;
+	ss << log_line;
+	string sub;
+	uint16_t pc;
+	ss >> hex >> pc;
+	if (pc != c.pc) {
+		printf("\033[%dm%s\033[m ", 101, "ERROR");
+		printf("PC: %x != %x\n", c.pc, pc);
+	}
+	
+	int ctr = 0;
+	/*
+	while (1) {
+		ss >> sub;
+		if (sub.size() >= 3) break;
+		uint8_t sz = hex_from_str(sub);
+	}
+	*/
+
+
+	int pos = log_line.rfind("A:");
+	
+	uint8_t temp_hex;
+	string s = log_line.substr(pos+2, 2);
+	temp_hex = hex_from_str(s);
+
+	if (temp_hex != c.ar) {
+		printf("\033[%dm%s\033[m ", 101, "ERROR");
+		printf("AR: %x != %x\n", c.ar, temp_hex);
+	}
+	pos = log_line.rfind("SP:");
+	s =  log_line.substr(pos+3, 2);
+	temp_hex = hex_from_str(s);
+	if (temp_hex != c.sp) {
+		printf("\033[%dm%s\033[m ", 101, "ERROR");
+		printf("SP: %x != %x\n", c.sp, temp_hex);
+	}
+	pos = log_line.find("P:");
+	s = log_line.substr(pos + 2, 2);
+	temp_hex = hex_from_str(s);
+	uint8_t status = get_cpu_status_register(c);
+	if (temp_hex != status) {
+		printf("\033[%dm%s\033[m ", 101, "ERROR");
+		printf("Status: %x != %x\n", status, temp_hex);
+	}
+	pos = log_line.rfind("X:");
+	s = log_line.substr(pos + 2, 2);
+	temp_hex = hex_from_str(s);
+	if (temp_hex != c.xr) {
+		printf("\033[%dm%s\033[m ", 101, "ERROR");
+		printf("XR: %x != %x\n", c.xr, temp_hex);
+	}
+	pos = log_line.rfind("Y:");
+	s = log_line.substr(pos + 2, 2);
+	temp_hex = hex_from_str(s);
+	if (temp_hex != c.yr) {
+		printf("\033[%dm%s\033[m ", 101, "ERROR");
+		printf("YR: %x != %x\n", c.yr, temp_hex);
+	}
+}
+int main()
+{
+	CPU c{};
+	c.memory = new uint8_t[0xFFFF];
+	c.pc = 0xC000;
+	c.sp = 0xFD;
+	c.inf = 1;
+
+	std::ifstream rom("nestest.nes", std::ios::binary);
+	if (!rom) return 1;
+	rom.seekg(0, std::ios_base::end);
+	int length = rom.tellg();
+	rom.seekg(0, ios_base::beg);
+	rom.read((char*)&c.memory[0xC000 - 0x10], 0x4000);
+
+	std::ifstream nestestlog("nestest.log");
+	if (!nestestlog) return 1;
+	std::string line;
+
+	while (1) 
+	{
+		getline(nestestlog, line);
+		assert_log_and_cpu(c, line);
+		c.step();
+	}
+	
+	cout << "Hello CMake." << endl;
+	return 0;
+}
