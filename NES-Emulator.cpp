@@ -10,7 +10,10 @@
 #include "mos6502/mos6502.h"
 //#include "SimpleNES/include/CPU.h"
 #include "olcNES/Part#2 - CPU/Bus.h"
+#include "log.h"
 
+std::ostream* Log::stream;
+Level Log::log_level;
 
 using namespace std;
 
@@ -103,12 +106,21 @@ void assert_log_and_cpu(CPU& c, std::string& log_line)
 		printf("\033[%dm%s\033[m ", 101, "ERROR");
 		printf("YR: %x != %x\n", c.yr, temp_hex);
 	}
+	pos = log_line.rfind("CYC:");
+	s = log_line.substr(pos+4);
+	help << s;
+	uint64_t cycles;
+	help >> cycles;
+	if (cycles != c.cycles) {
+		printf("\033[%dm%s\033[m ", 101, "ERROR");
+		printf("CYC: %lld != %lld\n", c.cycles, cycles);
+	}
 }
 uint8_t* mos_mem;
 
 void compare(Bus c2, CPU& c)
 {
-	for (int i = 0; i < 1000; i++){
+	for (int i = 0; i < 0x07ff; i++){
 		assert(c2.ram[i] == c.memory[i]);
 	}
 	assert(c2.cpu.a == c.ar);
@@ -130,11 +142,15 @@ void write(uint16_t adr, uint8_t val)
 }
 int main()
 {
+	Log::log_level = Error;
+	Log::set_stream(&std::cout);
+
 	CPU c{};
 	c.memory = new uint8_t[0xFFFF];
 	c.pc = 0xC000;
 	c.sp = 0xFD;
 	c.inf = 1;
+	c.cycles = 7;
 	mos_mem = new uint8_t[0xFFFF];
 
 	mos6502 mos(&read, &write);

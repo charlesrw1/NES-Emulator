@@ -1,6 +1,8 @@
 #include <cstdint>
 struct CPU
 {
+	uint64_t cycles;
+	
 	// accumulator, x register, y register
 	uint8_t ar, xr, yr;
 
@@ -12,6 +14,11 @@ struct CPU
 	// Status register
 	// negative, overflow, decimal (not used), interupt disable, zero, carry
 	bool nf:1, vf:1, df:1, inf:1, zf:1, cf:1;
+
+	// flag set by opcode function to determine if addressing should
+	// increase cycles
+	bool extra_cycle_adr : 1;
+	bool opcode_extra_cycle : 1;
 
 	uint8_t* memory;
 
