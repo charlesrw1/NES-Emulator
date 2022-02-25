@@ -7,6 +7,10 @@
 #include <sstream>
 #include <string>
 #include <cassert>
+#include "mos6502/mos6502.h"
+//#include "SimpleNES/include/CPU.h"
+#include "olcNES/Part#2 - CPU/Bus.h"
+
 
 using namespace std;
 
@@ -100,6 +104,30 @@ void assert_log_and_cpu(CPU& c, std::string& log_line)
 		printf("YR: %x != %x\n", c.yr, temp_hex);
 	}
 }
+uint8_t* mos_mem;
+
+void compare(Bus c2, CPU& c)
+{
+	for (int i = 0; i < 1000; i++){
+		assert(c2.ram[i] == c.memory[i]);
+	}
+	assert(c2.cpu.a == c.ar);
+	uint8_t mst = get_cpu_status_register(c);
+	//assert(st == mst);
+	assert(c2.cpu.pc == c.pc);
+	assert(c2.cpu.stkp == c.sp);
+	assert(c2.cpu.x == c.xr);
+	assert(c2.cpu.y == c.yr);
+}
+
+uint8_t read(uint16_t adr)
+{
+	return mos_mem[adr];
+}
+void write(uint16_t adr, uint8_t val)
+{
+	mos_mem[adr] = val;
+}
 int main()
 {
 	CPU c{};
@@ -107,6 +135,24 @@ int main()
 	c.pc = 0xC000;
 	c.sp = 0xFD;
 	c.inf = 1;
+	mos_mem = new uint8_t[0xFFFF];
+
+	mos6502 mos(&read, &write);
+	mos.pc = 0xC000;
+	mos.sp = 0xFD;
+	mos.A = 0;
+	mos.X = 0;
+	mos.Y = 0;
+	mos.status = 36;
+
+	//sn::MainBus mb;
+	//sn::CPU c2(mb);
+	//c2.r_PC = 0xC000;
+	
+	Bus olc;
+	olc.cpu.pc = 0xC000;
+	olc.ram = new uint8_t[0xFFFF];
+	olc.cpu.stkp = 0xFD;
 
 	std::ifstream rom("nestest.nes", std::ios::binary);
 	if (!rom) return 1;
@@ -114,16 +160,23 @@ int main()
 	int length = rom.tellg();
 	rom.seekg(0, ios_base::beg);
 	rom.read((char*)&c.memory[0xC000 - 0x10], 0x4000);
+	//mb.m_RAM.resize(0x4000);
+	rom.seekg(0, ios_base::beg);
+	rom.read((char*)&olc.ram[0xC000 - 0x10], 0x4000);
+
 
 	std::ifstream nestestlog("nestest.log");
 	if (!nestestlog) return 1;
 	std::string line;
-
+	uint64_t cycles;
 	while (1) 
 	{
 		getline(nestestlog, line);
 		assert_log_and_cpu(c, line);
 		c.step();
+		olc.cpu.clock();
+		compare(olc,c);
+
 	}
 	
 	cout << "Hello CMake." << endl;

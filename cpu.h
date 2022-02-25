@@ -19,9 +19,14 @@ struct CPU
 	void process_interrupts();
 
 	uint8_t read_byte(uint16_t addr) {
+
 		return memory[addr];
 	}
 	void write_byte(uint16_t addr, uint8_t val) {
+		
+		if (addr == 199) {
+			printf("");
+		}
 		memory[addr] = val;
 	}
 	uint16_t read_word(uint16_t addr) {
