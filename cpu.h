@@ -1,6 +1,20 @@
 #include <cstdint>
+#ifndef CPU_H
+#define CPU_H
+#include "mainram.h"
+
 struct CPU
 {
+	CPU(MainRAM& mem) : mem(mem)
+	{
+		cycles = 7;
+		ar = xr = yr = 0;
+		nf = vf = df = zf = cf = 0;
+		inf = 1;
+		pc = 0;
+		sp = 0xFD;
+	}
+	
 	uint64_t cycles;
 	
 	// accumulator, x register, y register
@@ -20,21 +34,25 @@ struct CPU
 	bool extra_cycle_adr : 1;
 	bool opcode_extra_cycle : 1;
 
+	MainRAM& mem;
 	uint8_t* memory;
 
 	void step();
-	void process_interrupts();
+	// Non maskable interrupt
+	void nmi();
+	// Interrupt request, optional
+	void irq();
+	void reset();
 
 	uint8_t read_byte(uint16_t addr) {
 
-		return memory[addr];
+		return mem.read_byte(addr);
+		//return memory[addr];
 	}
 	void write_byte(uint16_t addr, uint8_t val) {
 		
-		if (addr == 199) {
-			printf("");
-		}
-		memory[addr] = val;
+		mem.write_byte(addr, val);
+		//memory[addr] = val;
 	}
 	uint16_t read_word(uint16_t addr) {
 		return (read_byte(addr + 1) << 8) | read_byte(addr);
@@ -44,3 +62,4 @@ struct CPU
 		write_byte(addr + 1, val >> 8);
 	}
 };
+#endif // !CPU_H

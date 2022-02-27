@@ -1,7 +1,6 @@
 #include <iostream>
 #include <cstring>
 #include "cpu.h"
-
 #include "log.h"
 
 const int cpu_cycles[0x100] = {
@@ -22,6 +21,73 @@ const int cpu_cycles[0x100] = {
 	2, 6, 0, 0, 3, 3, 5, 0, 2, 2, 2, 2, 4, 4, 6, 0,
 	2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0,
 };
+
+void execute_opcode(CPU& c, uint8_t opcode);
+uint8_t next_byte(CPU& c);
+void push_byte(CPU& c, uint8_t val);
+void push_status(CPU& c, bool break_set=1);
+void CPU::step()
+{
+	extra_cycle_adr = 0;
+	opcode_extra_cycle = 0;
+
+	uint8_t opcode = next_byte(*this);
+	
+	LOG(CPU_Info) << std::hex << "PC: " << +(pc - 1) << ", Opcode: " << +opcode << std::endl;
+
+	execute_opcode(*this, opcode);
+
+	cycles += cpu_cycles[opcode];
+	cycles += (extra_cycle_adr & opcode_extra_cycle);
+}
+void CPU::irq()
+{
+	// If interrupts aren't disabled
+	if (!inf)
+	{
+		LOG(CPU_Info) << "Maskable interrupt entered\n";
+		push_byte(*this, (pc + 1) >> 8 & 0xFF);
+		push_byte(*this, (pc + 1) & 0xFF);
+		inf = 1;
+		push_status(*this, 0);
+
+		// Interrupt vector address
+		uint16_t addr = 0xFFFE;
+		uint16_t lo = read_byte(addr);
+		uint16_t hi = read_byte(addr + 1);
+		pc = (hi << 8) | lo;
+		
+		cycles += 7;
+	}
+}
+void CPU::nmi()
+{
+	LOG(CPU_Info) << "Non-maskable interrupt entered\n";
+	push_byte(*this, (pc + 1) >> 8 & 0xFF);
+	push_byte(*this, (pc + 1) & 0xFF);
+	inf = 1;
+	push_status(*this, 0);
+
+	uint16_t addr = 0xFFFA;
+	uint16_t lo = read_byte(addr);
+	uint16_t hi = read_byte(addr + 1);
+	pc = (hi << 8) | lo;
+
+	cycles += 8;
+}
+void CPU::reset()
+{
+	LOG(CPU_Info) << "CPU reset\n";
+	uint16_t lo = read_byte(0xFFFC);
+	uint16_t hi = read_byte(0xFFFC + 1);
+	pc = (hi << 8) | lo;
+	ar = xr = yr = 0;
+	sp = 0xFD;
+	nf = vf = df = zf = cf = 0;
+	inf = 1;
+
+	cycles += 7;
+}
 
 inline uint8_t peek_byte(CPU& c)
 {
@@ -60,22 +126,6 @@ inline uint16_t pop_word(CPU& c)
 	//return c.read_word(c.sp | 0x0100);
 	return val;
 }
-void execute_opcode(CPU& c, uint8_t opcode);
-void CPU::step()
-{
-	extra_cycle_adr = 0;
-	opcode_extra_cycle = 0;
-
-
-	uint8_t opcode = next_byte(*this);
-	
-	LOG(CPU_Info) << std::hex << "PC: " << +(pc - 1) << ", Opcode: " << +opcode << std::endl;
-
-	execute_opcode(*this, opcode);
-
-	cycles += cpu_cycles[opcode];
-	cycles += (extra_cycle_adr & opcode_extra_cycle);
-}
 inline void jsr(CPU& c)
 {
 	//push_word(c,c.pc+1);
@@ -93,7 +143,7 @@ inline void branch(CPU& c, bool cond)
 	if (cond) {
 		// If branch occurs on same page, add a cycle, if different,
 		// add 2 cycles
-		if (c.pc & 0xFF00 != addr & 0xFF00) {
+		if ((c.pc & 0xFF00) != (addr & 0xFF00)) {
 			c.cycles += 2;
 		}
 		else {
@@ -178,14 +228,16 @@ inline void cmp(CPU& c, uint8_t val1, uint8_t val2)
 	subb(c, val1, val2, 0);
 	c.vf = v_state;
 }
-inline void push_status(CPU& c)
+inline void push_status(CPU& c, bool break_set)
 {
 	uint8_t res=0;
 	res |= (c.cf << 0);
 	res |= (c.zf << 1);
 	res |= (c.inf << 2);
 	res |= (c.df << 3);
-	res |= (1 << 4);
+	// BRK and PHP pushes 1 on to the stack,
+	// Hardware interrupts IRQ and NMI push 0
+	res |= (break_set << 4);
 	res |= (1 << 5);
 	res |= (c.vf << 6);
 	res |= (c.nf << 7);
@@ -303,12 +355,10 @@ inline uint16_t indirect_x(CPU& c)
 {
 	uint8_t val = next_byte(c);
 	uint16_t lo = c.read_byte(((uint16_t)val + c.xr) & 0xFF);
-	c.zf = lo == 0;
 	uint16_t hi = c.read_byte(((uint16_t)val + c.xr + 1) & 0xFF);
-	// nes test says it affects these flags I guess
-	c.zf = hi == 0;
-	c.nf = hi & (1 << 7);
-	return (hi << 8) | lo;
+	uint16_t res = (hi << 8) | lo;
+
+	return res;
 }
 inline uint16_t indirect_y(CPU& c)
 {
@@ -317,8 +367,7 @@ inline uint16_t indirect_y(CPU& c)
 	uint16_t hi = c.read_byte((val +1)& 0xFF);
 	uint16_t res = (hi << 8) | lo;
 	res += c.yr;
-	c.zf = res == 0;
-	c.nf = res & (1 << 7);
+	
 	// extra cycle for crossed page boundary
 	if ((res & 0xFF00) != (hi << 8))
 		c.extra_cycle_adr = 1;
@@ -328,7 +377,7 @@ inline uint16_t indirect(CPU& c)
 {
 	uint16_t ptr = next_word(c);
 
-	if (ptr&0xFF == 0x00FF) // Simulate page boundary hardware bug
+	if ((ptr&0xFF) == 0x00FF) // Simulate page boundary hardware bug
 	{
 		return (c.read_byte(ptr & 0xFF00) << 8) | c.read_byte(ptr);
 	}
@@ -358,8 +407,13 @@ inline void brk(CPU& c)
 {
 	push_byte(c, (c.pc + 1) >> 8 & 0xFF);
 	push_byte(c, (c.pc + 1) & 0xFF);
-	push_status(c);
 	c.inf = 1;
+	push_status(c);
+
+	uint16_t addr = 0xFFFE;
+	uint16_t lo = c.read_byte(addr);
+	uint16_t hi = c.read_byte(addr + 1);
+	c.pc = (hi << 8) | lo;
 }
 #define ZPGV c.read_byte(next_byte(c))
 #define ABSV c.read_byte(next_word(c))
@@ -621,8 +675,8 @@ void execute_opcode(CPU& c, uint8_t opcode)
 		c.write_byte(addr, ror(c, c.read_byte(addr)));
 	} break;									// ROR abs, x
 
-
 	default:
+		LOG(Error) << "Unknown Opcode: " << +opcode << std::endl;
 		throw std::runtime_error("UNKNOWN OPCODE");
 	}
  }

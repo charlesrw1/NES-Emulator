@@ -1,16 +1,19 @@
 ﻿// NES-Emulator.cpp : Defines the entry point for the application.
 //
 
-#include "NES-Emulator.h"
+#include "main.h"
 #include "cpu.h"
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <cassert>
-#include "mos6502/mos6502.h"
-//#include "SimpleNES/include/CPU.h"
 #include "olcNES/Part#2 - CPU/Bus.h"
 #include "log.h"
+#include "cartridge.h"
+#include "mapper.h"
+#include "emulator.h"
+#include "video_screen.h"
+
 
 std::ostream* Log::stream;
 Level Log::log_level;
@@ -29,7 +32,6 @@ uint8_t hex_from_str(string s)
 	res |= temp << 4;
 
 	return res;
-
 }
 uint8_t get_cpu_status_register(CPU& c)
 {
@@ -58,15 +60,6 @@ void assert_log_and_cpu(CPU& c, std::string& log_line)
 	}
 	
 	int ctr = 0;
-	/*
-	while (1) {
-		ss >> sub;
-		if (sub.size() >= 3) break;
-		uint8_t sz = hex_from_str(sub);
-	}
-	*/
-
-
 	int pos = log_line.rfind("A:");
 	
 	uint8_t temp_hex;
@@ -116,12 +109,11 @@ void assert_log_and_cpu(CPU& c, std::string& log_line)
 		printf("CYC: %lld != %lld\n", c.cycles, cycles);
 	}
 }
-uint8_t* mos_mem;
 
 void compare(Bus c2, CPU& c)
 {
-	for (int i = 0; i < 0x07ff; i++){
-		assert(c2.ram[i] == c.memory[i]);
+	for (int i = 0; i < 0x2000; i++){
+		assert(c2.ram[i] == c.mem.memory[i]);
 	}
 	assert(c2.cpu.a == c.ar);
 	uint8_t mst = get_cpu_status_register(c);
@@ -132,39 +124,12 @@ void compare(Bus c2, CPU& c)
 	assert(c2.cpu.y == c.yr);
 }
 
-uint8_t read(uint16_t adr)
+int run_nestest(Emulator& app)
 {
-	return mos_mem[adr];
-}
-void write(uint16_t adr, uint8_t val)
-{
-	mos_mem[adr] = val;
-}
-int main()
-{
-	Log::log_level = Error;
-	Log::set_stream(&std::cout);
+	app.load_cartridge("nestest.nes");
+	//app.cpu.reset();
+	app.cpu.pc = 0xC000;
 
-	CPU c{};
-	c.memory = new uint8_t[0xFFFF];
-	c.pc = 0xC000;
-	c.sp = 0xFD;
-	c.inf = 1;
-	c.cycles = 7;
-	mos_mem = new uint8_t[0xFFFF];
-
-	mos6502 mos(&read, &write);
-	mos.pc = 0xC000;
-	mos.sp = 0xFD;
-	mos.A = 0;
-	mos.X = 0;
-	mos.Y = 0;
-	mos.status = 36;
-
-	//sn::MainBus mb;
-	//sn::CPU c2(mb);
-	//c2.r_PC = 0xC000;
-	
 	Bus olc;
 	olc.cpu.pc = 0xC000;
 	olc.ram = new uint8_t[0xFFFF];
@@ -175,23 +140,66 @@ int main()
 	rom.seekg(0, std::ios_base::end);
 	int length = rom.tellg();
 	rom.seekg(0, ios_base::beg);
-	rom.read((char*)&c.memory[0xC000 - 0x10], 0x4000);
-	//mb.m_RAM.resize(0x4000);
-	rom.seekg(0, ios_base::beg);
 	rom.read((char*)&olc.ram[0xC000 - 0x10], 0x4000);
-
 
 	std::ifstream nestestlog("nestest.log");
 	if (!nestestlog) return 1;
 	std::string line;
-	uint64_t cycles;
-	while (1) 
+
+	while (1)
 	{
 		getline(nestestlog, line);
-		assert_log_and_cpu(c, line);
-		c.step();
+		assert_log_and_cpu(app.cpu, line);
+		app.cpu.step();
 		olc.cpu.clock();
-		compare(olc,c);
+		compare(olc,app.cpu);
+	}
+}
+
+int main()
+{
+	Log::log_level = Info;
+	std::ofstream log_file("log_dump.txt");
+	Log::set_stream(&std::cout);
+
+	Emulator app;
+	app.load_cartridge("donkey_kong.nes");
+	//cart.load_from_file("nestest.nes");
+	//c.memory = new uint8_t[0xFFFF];
+	app.cpu.pc = 0xC000;
+	app.cpu.sp = 0xFD;
+	app.cpu.inf = 1;
+	app.cpu.cycles = 7;
+	app.cpu.reset();
+	//sn::MainBus mb;
+	//sn::CPU c2(mb);
+	//c2.r_PC = 0xC000;
+	
+	//run_nestest(app);
+
+	uint64_t cycles;
+	sf::RenderWindow window(sf::VideoMode(256*2, 240*2), "NES-EMULATOR");
+	VideoScreen vs(window);
+	while (window.isOpen()) 
+	{
+		sf::Event event;
+		while (window.pollEvent(event)) {
+			switch (event.type)
+			{
+			case sf::Event::Closed:
+				window.close();
+			default:
+				break;
+			}
+		}
+		window.clear();
+		vs.render();
+		window.display();
+		//getline(nestestlog, line);
+		//assert_log_and_cpu(app.cpu, line);
+		app.cpu.step();
+		//olc.cpu.clock();
+		//compare(olc,app.cpu);
 
 	}
 	
