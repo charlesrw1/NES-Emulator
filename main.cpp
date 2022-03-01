@@ -7,13 +7,13 @@
 #include <sstream>
 #include <string>
 #include <cassert>
-#include "olcNES/Part#2 - CPU/Bus.h"
 #include "log.h"
 #include "cartridge.h"
 #include "mapper.h"
 #include "emulator.h"
 #include "video_screen.h"
 
+#include "olcNES/Part#2 - CPU/Bus.h"
 
 std::ostream* Log::stream;
 Level Log::log_level;
@@ -47,8 +47,7 @@ uint8_t get_cpu_status_register(CPU& c)
 	return res;
 }
 void assert_log_and_cpu(CPU& c, std::string& log_line)
-{
-
+{	
 	stringstream ss, help;
 	ss << log_line;
 	string sub;
@@ -112,6 +111,7 @@ void assert_log_and_cpu(CPU& c, std::string& log_line)
 
 void compare(Bus c2, CPU& c)
 {
+
 	for (int i = 0; i < 0x2000; i++){
 		assert(c2.ram[i] == c.mem.memory[i]);
 	}
@@ -122,6 +122,7 @@ void compare(Bus c2, CPU& c)
 	assert(c2.cpu.stkp == c.sp);
 	assert(c2.cpu.x == c.xr);
 	assert(c2.cpu.y == c.yr);
+	
 }
 
 int run_nestest(Emulator& app)
@@ -146,39 +147,53 @@ int run_nestest(Emulator& app)
 	if (!nestestlog) return 1;
 	std::string line;
 
+	int counter = 0;
 	while (1)
 	{
 		getline(nestestlog, line);
 		assert_log_and_cpu(app.cpu, line);
 		app.cpu.step();
 		olc.cpu.clock();
+
 		compare(olc,app.cpu);
+
+		// 0xC6BD is start of illegal opcode tests, I haven't implmented
+		// those in my emulator
+		if (app.cpu.pc == 0xc6bd) {
+			printf("NESTEST Complete\n");
+			return 0;
+		}
+		++counter;
 	}
+	return 1;
 }
+
+
 
 int main()
 {
-	Log::log_level = Info;
+	Log::log_level = CPU_Info;
 	std::ofstream log_file("log_dump.txt");
 	Log::set_stream(&std::cout);
 
-	Emulator app;
+	sf::RenderWindow window(sf::VideoMode(256*2, 240*2), "NES-EMULATOR");
+	window.setView(sf::View(sf::FloatRect(0, 0, 256, 240)));
+	Emulator app(window);
 	app.load_cartridge("donkey_kong.nes");
 	//cart.load_from_file("nestest.nes");
 	//c.memory = new uint8_t[0xFFFF];
 	app.cpu.pc = 0xC000;
 	app.cpu.sp = 0xFD;
 	app.cpu.inf = 1;
-	app.cpu.cycles = 7;
+	//app.cpu.cycles = 7;
 	app.cpu.reset();
 	//sn::MainBus mb;
 	//sn::CPU c2(mb);
 	//c2.r_PC = 0xC000;
 	
-	//run_nestest(app);
+	//return run_nestest(app);
 
 	uint64_t cycles;
-	sf::RenderWindow window(sf::VideoMode(256*2, 240*2), "NES-EMULATOR");
 	VideoScreen vs(window);
 	while (window.isOpen()) 
 	{
@@ -192,12 +207,13 @@ int main()
 				break;
 			}
 		}
-		window.clear();
-		vs.render();
-		window.display();
+		//window.clear();
+		//vs.render();
+		//window.display();
 		//getline(nestestlog, line);
 		//assert_log_and_cpu(app.cpu, line);
-		app.cpu.step();
+		//app.cpu.step();
+		app.step();
 		//olc.cpu.clock();
 		//compare(olc,app.cpu);
 

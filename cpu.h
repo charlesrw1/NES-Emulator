@@ -35,7 +35,6 @@ struct CPU
 	bool opcode_extra_cycle : 1;
 
 	MainRAM& mem;
-	uint8_t* memory;
 
 	void step();
 	// Non maskable interrupt
@@ -47,12 +46,10 @@ struct CPU
 	uint8_t read_byte(uint16_t addr) {
 
 		return mem.read_byte(addr);
-		//return memory[addr];
 	}
 	void write_byte(uint16_t addr, uint8_t val) {
 		
 		mem.write_byte(addr, val);
-		//memory[addr] = val;
 	}
 	uint16_t read_word(uint16_t addr) {
 		return (read_byte(addr + 1) << 8) | read_byte(addr);

@@ -14,6 +14,8 @@ public:
 	PPU& ppu;
 	Cartridge& cart;
 
+	uint8_t controller_port_1;
+
 	uint8_t* memory;
 
 	bool DMA_request;

@@ -2,6 +2,10 @@
 #include "cartridge.h"
 #include "mapper.h"
 #include "ppu.h"
+
+const int scanlines_pf = 262;
+const int clocks_psl = 342;
+
 MainRAM::MainRAM(PPU& ppu, Cartridge& cart) : ppu(ppu), cart(cart)
 {
 	memory = new uint8_t[0x2000];
@@ -28,6 +32,9 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 		// data to PPU OAM
 		if (addr == 0x4014) {
 			DMA_request = true;
+		}
+		if (addr == 0x4016) {
+			return 1;
 		}
 	}
 	else {

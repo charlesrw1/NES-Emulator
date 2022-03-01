@@ -33,7 +33,7 @@ void CPU::step()
 
 	uint8_t opcode = next_byte(*this);
 	
-	LOG(CPU_Info) << std::hex << "PC: " << +(pc - 1) << ", Opcode: " << +opcode << std::endl;
+	//LOG(CPU_Info) << std::hex << "PC: " << +(pc - 1) << ", Opcode: " << +opcode << std::endl;
 
 	execute_opcode(*this, opcode);
 
@@ -46,8 +46,8 @@ void CPU::irq()
 	if (!inf)
 	{
 		LOG(CPU_Info) << "Maskable interrupt entered\n";
-		push_byte(*this, (pc + 1) >> 8 & 0xFF);
-		push_byte(*this, (pc + 1) & 0xFF);
+		push_byte(*this, (pc >> 8) & 0xFF);
+		push_byte(*this, (pc) & 0xFF);
 		inf = 1;
 		push_status(*this, 0);
 
@@ -63,8 +63,8 @@ void CPU::irq()
 void CPU::nmi()
 {
 	LOG(CPU_Info) << "Non-maskable interrupt entered\n";
-	push_byte(*this, (pc + 1) >> 8 & 0xFF);
-	push_byte(*this, (pc + 1) & 0xFF);
+	push_byte(*this, (pc >> 8) & 0xFF);
+	push_byte(*this, (pc) & 0xFF);
 	inf = 1;
 	push_status(*this, 0);
 
@@ -86,7 +86,7 @@ void CPU::reset()
 	nf = vf = df = zf = cf = 0;
 	inf = 1;
 
-	cycles += 7;
+	cycles = 7;
 }
 
 inline uint8_t peek_byte(CPU& c)
@@ -215,7 +215,7 @@ inline uint8_t subb(CPU& c, uint8_t v1, uint8_t v2, bool cy)
 {
 	// twos complement, A-B = A+~B+1
 	// cy will be 1 after !cy unless subtracting it too
-	uint8_t res = addb(c, v1, ~v2, !cy);
+	uint8_t res = addb(c, v1, ~v2, cy);
 	//c.cf = !c.cf;
 
 	return res;
@@ -225,7 +225,7 @@ inline void cmp(CPU& c, uint8_t val1, uint8_t val2)
 	// Possible bug? Refrence says cmp doesn't change overflow flag,
 	// so ill just store and restore if subb modifies it
 	bool v_state = c.vf;
-	subb(c, val1, val2, 0);
+	subb(c, val1, val2, 1);
 	c.vf = v_state;
 }
 inline void push_status(CPU& c, bool break_set)
@@ -405,8 +405,8 @@ inline uint16_t absolute_x(CPU& c)
 }
 inline void brk(CPU& c)
 {
-	push_byte(c, (c.pc + 1) >> 8 & 0xFF);
-	push_byte(c, (c.pc + 1) & 0xFF);
+	push_byte(c, (c.pc >> 8) & 0xFF);
+	push_byte(c, (c.pc) & 0xFF);
 	c.inf = 1;
 	push_status(c);
 
@@ -546,14 +546,14 @@ void execute_opcode(CPU& c, uint8_t opcode)
 
 
 
-	case 0xE9: c.ar = subb(c, c.ar, next_byte(c), !c.cf); break;				// SBC #
-	case 0xE5: c.ar = subb(c, c.ar, c.read_byte(next_byte(c)), !c.cf); break;	// SBC zpg
-	case 0xE1: c.ar = subb(c, c.ar, c.read_byte(indirect_x(c)), !c.cf); break;	// SBC x, ind
-	case 0xED: c.ar = subb(c, c.ar, ABSV, !c.cf); break;						// SBC abs
-	case 0xF1: c.ar = subb(c, c.ar, INDYV, !c.cf); break;						// SBC ind, y
-	case 0xF9: c.ar = subb(c, c.ar, ABSYV, !c.cf); break;						// SBC abs, y
-	case 0xF5: c.ar = subb(c, c.ar, ZPGXV, !c.cf); break;						// SBC zpg, x
-	case 0xFD: c.ar = subb(c, c.ar, ABSXV, !c.cf); break;						// SBC abs, x
+	case 0xE9: c.ar = subb(c, c.ar, next_byte(c), c.cf); break;					// SBC #
+	case 0xE5: c.ar = subb(c, c.ar, c.read_byte(next_byte(c)), c.cf); break;	// SBC zpg
+	case 0xE1: c.ar = subb(c, c.ar, c.read_byte(indirect_x(c)), c.cf); break;	// SBC x, ind
+	case 0xED: c.ar = subb(c, c.ar, ABSV, c.cf); break;							// SBC abs
+	case 0xF1: c.ar = subb(c, c.ar, INDYV, c.cf); break;						// SBC ind, y
+	case 0xF9: c.ar = subb(c, c.ar, ABSYV, c.cf); break;						// SBC abs, y
+	case 0xF5: c.ar = subb(c, c.ar, ZPGXV, c.cf); break;						// SBC zpg, x
+	case 0xFD: c.ar = subb(c, c.ar, ABSXV, c.cf); break;						// SBC abs, x
 
 	case 0xC8: xy_reg_crement(c, c.yr, 1); break;	// INY
 	case 0xE8: xy_reg_crement(c, c.xr, 1); break;	// INX
@@ -677,6 +677,6 @@ void execute_opcode(CPU& c, uint8_t opcode)
 
 	default:
 		LOG(Error) << "Unknown Opcode: " << +opcode << std::endl;
-		throw std::runtime_error("UNKNOWN OPCODE");
+		//throw std::runtime_error("UNKNOWN OPCODE");
 	}
  }
