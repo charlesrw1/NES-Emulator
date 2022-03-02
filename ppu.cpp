@@ -22,6 +22,7 @@ PPU::PPU(PPURAM& ppu_ram, VideoScreen& screen) : ppubus(ppu_ram), screen(screen)
 	sprite0_hit = v_blank = 0;
 
 	v_blank = 0;
+	send_nmi_output = 0;
 
 	oam_addr = 0;
 	OAM = new ObjectSprite[64];
@@ -78,8 +79,8 @@ void PPU::RegisterWrite(uint16_t addr, uint8_t val)
 	switch (addr)
 	{
 	case 0x2000:
-		data_address &= 0xF3FF;
-		data_address |= (val & 0x3) << 10; // first 2 bits
+		temp_addr &= 0xF3FF;
+		temp_addr |= (val & 0x3) << 10; // first 2 bits
 
 		vram_increment = val & (1 << 2);
 		sprite_pattern_table = val & (1 << 3);
@@ -87,6 +88,11 @@ void PPU::RegisterWrite(uint16_t addr, uint8_t val)
 		tall_sprites = val & (1 << 5);
 
 		generate_NMI = val & (1 << 7);
+
+		if (((data_address >> 10) & 0x3) == 3) {
+			std::cout << std::hex << +((data_address >> 10) & 0x3) << std::endl;
+		}
+
 		break;
 	case 0x2001:
 		greyscale = val & (1 << 0);
@@ -139,12 +145,16 @@ void PPU::RegisterWrite(uint16_t addr, uint8_t val)
 			temp_addr |= val;
 			data_address = temp_addr;
 			//temp_addr = 0;
-			std::cout << "REG Y: " << ((data_address & 0x03E0) >> 5) << " " << ((data_address & 0x7000) >> 12) << " SCANLINE: " << scanline << std::endl;
+			//std::cout << "REG Y: " << ((data_address & 0x03E0) >> 5) << " " << ((data_address & 0x7000) >> 12) << " SCANLINE: " << scanline << std::endl;
+
 		}
 
 		break;
 	case 0x2007:
 	{
+		if (data_address > 0x3eff) {
+			printf("");
+		}
 	ppubus.write_byte(data_address, val);
 	data_address += (vram_increment) ? 32 : 1;
 	break;
@@ -198,8 +208,8 @@ inline void update_shifters(PPU& p)
 	p.patterntable_bgrd[1] <<= 1;
 	p.palette_bgrd[0] <<= 1;
 	p.palette_bgrd[1] <<= 1;
-	p.palette_bgrd[0] |= p.next_palette_latch[0];
-	p.palette_bgrd[1] |= p.next_palette_latch[1];
+	p.palette_bgrd[0] |= (uint8_t)p.next_palette_latch[0];
+	p.palette_bgrd[1] |= (uint8_t)p.next_palette_latch[1];
 	/*
 	for (int i = 0; i < p.num_sprites_scanline; i++) {
 		if (p.scanline_sprite_xpos[i] > 0) {
@@ -277,7 +287,7 @@ inline void increment_vertical(PPU& p)
 		p.data_address = (p.data_address & ~(0x03E0)) | (y << 5);
 	}
 
-	std::cout << "IV Y: " << ((p.data_address & 0x03E0) >> 5) << " " << ((p.data_address & 0x7000) >> 12) << " SCANLINE: " << p.scanline << std::endl;
+	//std::cout << "IV Y: " << ((p.data_address & 0x03E0) >> 5) << " " << ((p.data_address & 0x7000) >> 12) << " SCANLINE: " << p.scanline << std::endl;
 }
 inline uint8_t read_nametable_tile(PPU& p)
 {
@@ -347,6 +357,7 @@ inline void fetch_and_append_tile_shifters(PPU& p)
 	uint8_t pattern_lower = fetch_pattern_table(p, nametable_tile, 0, p.background_pattern_table);
 	uint8_t pattern_upper = fetch_pattern_table(p, nametable_tile, 1, p.background_pattern_table);
 	uint8_t palette = get_tile_palette_index(p, tile_attribute);
+
 	// these should have been left shifted 8 times already so oring is fine
 	p.patterntable_bgrd[0] |= pattern_upper;
 	p.patterntable_bgrd[1] |= pattern_lower;
@@ -405,7 +416,7 @@ void PPU::clock()
 
 			fetch_and_append_tile_shifters(*this);
 
-			std::cout << "Y: " << ((data_address & 0x03E0) >> 5) << " " << scanline << std::endl;
+			//std::cout << "Y: " << ((data_address & 0x03E0) >> 5) << " " << scanline << std::endl;
 
 			//std::cout << "YFINE: " << ((data_address & 0x7000) >> 12) << std::endl;
 
@@ -428,8 +439,18 @@ void PPU::clock()
 			// Select bit from shifter, and shift over hi bit 1
 			color |= ((patterntable_bgrd[0] >> (15 - fine_x_scroll)) & 1) << 1;
 			color |= ((patterntable_bgrd[1] >> (15 - fine_x_scroll)) & 1);
+
+			color |= ((palette_bgrd[0] >> (7 - fine_x_scroll)) & 1) << 3;
+			color |= ((palette_bgrd[1] >> (7 - fine_x_scroll)) & 1) << 2;
+
+			//color |= (1 << 4);
+			uint8_t idx = ppubus.read_byte(0x3F00 + color);
+
+			sf::Uint32 pixel_color = colors[idx];
 			
-			screen.set_pixel(cycle - 1, scanline, { uint8_t(color * 80), uint8_t(color * 80), uint8_t(color * 80) });
+			//screen.set_pixel(cycle - 1, scanline, sf::Color(color*80, color*80, color*80));
+
+			screen.set_pixel(cycle - 1, scanline, sf::Color(pixel_color));
 
 
 			update_shifters(*this);
@@ -507,7 +528,7 @@ void PPU::clock()
 			cycle = -1;
 			++scanline;
 		}
-		if (scanline > 261) {
+		if (scanline > 260) {
 			scanline = -1;
 			render_state = PRERENDER;
 		}

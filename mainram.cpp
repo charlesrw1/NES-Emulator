@@ -34,7 +34,9 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 			DMA_request = true;
 		}
 		if (addr == 0x4016) {
-			return 1;
+			uint8_t res = cached_controller_port1 & 1;
+			cached_controller_port1 >>= 1;
+			return res;
 		}
 	}
 	else {
@@ -51,6 +53,11 @@ void MainRAM::write_byte(uint16_t addr, uint8_t val)
 	}
 	else if (addr < 0x4020) {
 		// accesses IO registers
+		if (addr == 0x4016) {
+			if (val == 1) {
+				controller_port_1 = cached_controller_port1;
+			}
+		}
 	}
 	else {
 		cart.mapper->write_prg(addr, val);

@@ -44,23 +44,27 @@ public:
 				input |= (1 << i);
 			}
 		}
-		main_ram.controller_port_1 = input;
+		main_ram.cached_controller_port1 = input;
 	}
 	void step()
 	{
-		poll_input();
+		uint64_t total_cycles = 0;
+		// About 1 frame
+		while (total_cycles < 29780) {
 
-		for (int i = 0; i < cpu.cycles * 3; i++) {
-			ppu.clock();
+			for (int i = 0; i < cpu.cycles * 3; i++) {
+				ppu.clock();
+			}
+			cpu.cycles = 0;
+
+			if (ppu.generate_NMI && ppu.send_nmi_output) {
+				ppu.send_nmi_output = false;
+				cpu.nmi();
+			}
+
+			cpu.step();
+			total_cycles += cpu.cycles;
 		}
-		cpu.cycles = 0;
-
-		if (ppu.generate_NMI && ppu.send_nmi_output) {
-			ppu.send_nmi_output = false;
-			cpu.nmi();
-		}
-
-		cpu.step();
 	}
 };
 #endif // !EMULATOR_H

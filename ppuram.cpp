@@ -42,7 +42,7 @@ void PPURAM::write_byte(uint16_t addr, uint8_t val)
 	if (addr < 0x2000) {
 		cart.mapper->write_chr(addr, val);
 	}
-	else if (addr < 0x3F00) {
+	else if (addr < 0x3eff) {
 		uint16_t index = addr & 0x3FF;
 		if (addr < 0x2400) {
 			nametable_ram[nametable_1 + index] = val;

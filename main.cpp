@@ -203,19 +203,21 @@ int main()
 			{
 			case sf::Event::Closed:
 				window.close();
+			case sf::Event::KeyPressed:
+				switch(event.key.code)
+				{
+				case sf::Keyboard::B:
+					printf("Break");
+					break;
+
+				}
 			default:
 				break;
 			}
 		}
-		//window.clear();
-		//vs.render();
-		//window.display();
-		//getline(nestestlog, line);
-		//assert_log_and_cpu(app.cpu, line);
-		//app.cpu.step();
+		app.poll_input();
 		app.step();
-		//olc.cpu.clock();
-		//compare(olc,app.cpu);
+		//sf::sleep(sf::milliseconds(16));
 
 	}
 	

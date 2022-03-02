@@ -62,7 +62,7 @@ void CPU::irq()
 }
 void CPU::nmi()
 {
-	LOG(CPU_Info) << "Non-maskable interrupt entered\n";
+	//LOG(CPU_Info) << "Non-maskable interrupt entered\n";
 	push_byte(*this, (pc >> 8) & 0xFF);
 	push_byte(*this, (pc) & 0xFF);
 	inf = 1;
@@ -73,7 +73,7 @@ void CPU::nmi()
 	uint16_t hi = read_byte(addr + 1);
 	pc = (hi << 8) | lo;
 
-	cycles += 8;
+	cycles += 7;
 }
 void CPU::reset()
 {
