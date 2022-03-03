@@ -29,8 +29,12 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 	// IO and APU registers
 	else if (addr < 0x4020) {
 		if (addr == 0x4016) {
-			uint8_t res = cached_controller_port1&1;
-			cached_controller_port1 >>= 1;
+			uint8_t res = (controller_port_1&(1<<7))>0;
+			controller_port_1 <<= 1;
+	
+			if (res != 0) {
+				LOG(Debug) << "INPUT DETECTED\n";
+			}
 			return res;
 		}
 	}
@@ -38,6 +42,8 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 		return cart.mapper->read_prg(addr);
 	}
 }
+				const sf::Keyboard::Key input_keys[8] = { sf::Keyboard::A,sf::Keyboard::S,sf::Keyboard::Q,sf::Keyboard::W,
+		sf::Keyboard::Up, sf::Keyboard::Down, sf::Keyboard::Left, sf::Keyboard::Right };
 void MainRAM::write_byte(uint16_t addr, uint8_t val)
 {
 	if (addr < 0x2000) {
@@ -58,10 +64,14 @@ void MainRAM::write_byte(uint16_t addr, uint8_t val)
 		// accesses IO registers
 		if (addr == 0x4016) {
 			if (val == 1) {
-				controller_port_1 = cached_controller_port1;
-			}
-			if (val == 0) {
-				controller_port_1 = cached_controller_port1;
+				//controller_port_1 = cached_controller_port1;
+					uint8_t input = 0;
+					for (int i = 0; i < 8; i++) {
+						if (sf::Keyboard::isKeyPressed(input_keys[7-i])) {
+							input |= (1 << i);
+						}
+					}
+					controller_port_1 = input;
 			}
 		}
 	}

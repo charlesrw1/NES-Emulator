@@ -173,14 +173,14 @@ int run_nestest(Emulator& app)
 
 int main()
 {
-	Log::log_level = CPU_Info;
+	Log::log_level = Debug;
 	std::ofstream log_file("log_dump.txt");
 	Log::set_stream(&std::cout);
 
 	sf::RenderWindow window(sf::VideoMode(256*4, 240*4), "NES-EMULATOR");
 	window.setView(sf::View(sf::FloatRect(0, 0, 256, 240)));
 	Emulator app(window);
-	app.load_cartridge("pacman.nes");
+	app.load_cartridge("smb.nes");
 	//cart.load_from_file("nestest.nes");
 	//c.memory = new uint8_t[0xFFFF];
 	app.cpu.pc = 0xC000;
@@ -217,8 +217,7 @@ int main()
 			}
 		}
 		app.step();
-		sf::sleep(sf::milliseconds(2));
-		app.poll_input();
+		sf::sleep(sf::milliseconds(4));
 
 	}
 	

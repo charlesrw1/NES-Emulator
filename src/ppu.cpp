@@ -469,31 +469,33 @@ void PPU::clock()
 		break;
 	case VISIBLE:
 // FIXME: refractor and add show_sprites
-		if (show_background && cycle >= 1 && cycle <= 256) {
+		if ((show_background || show_sprites) && cycle >= 1 && cycle <= 256) {
 			// Every 8 cycles, fetch new tile
 			if ((cycle - 1) % 8 == 0 && cycle > 1) {
 				fetch_and_append_tile_shifters(*this);
 			}
-				uint8_t bgrd_color = 0;
+			uint8_t bgrd_color = 0;
+			if (show_background && (!hide_edge_background || cycle >= 8)) {
 				// Select bit from shifter, and shift over hi bit 1
 				bgrd_color |= ((patterntable_bgrd[0] >> (15 - fine_x_scroll)) & 1) << 1;
 				bgrd_color |= ((patterntable_bgrd[1] >> (15 - fine_x_scroll)) & 1);
 
 				bgrd_color |= ((palette_bgrd[0] >> (7 - fine_x_scroll)) & 1) << 3;
 				bgrd_color |= ((palette_bgrd[1] >> (7 - fine_x_scroll)) & 1) << 2;
+			}
 
 				//color |= (1 << 4);
 				//uint8_t idx = ppubus.read_byte(0x3F00 + bgrd_color);
 
 
-				uint8_t sprite_color = 0;
-				bool is_sprite_0 = false;
-				bool sprite_behind_bgrd = false;
-
- 				for (int i = 0; i < num_sprites_scanline; i++) {
+			uint8_t sprite_color = 0;
+			bool is_sprite_0 = false;
+			bool sprite_behind_bgrd = false;
+			if (show_sprites && (!hide_edge_sprites || cycle >= 8)) {
+				for (int i = 0; i < num_sprites_scanline; i++) {
 					if (scanline_sprite_xpos[i] == 0) {
-						sprite_color |= ((scanline_sprite_pattern_shifters[i][0] >> 7)&1) << 1;
-						sprite_color |= (scanline_sprite_pattern_shifters[i][1] >> 7)&1;
+						sprite_color |= ((scanline_sprite_pattern_shifters[i][0] >> 7) & 1) << 1;
+						sprite_color |= (scanline_sprite_pattern_shifters[i][1] >> 7) & 1;
 
 						// if its transparent, keep looking for color
 						if (sprite_color == 0) continue;
@@ -504,7 +506,7 @@ void PPU::clock()
 						sprite_color |= (1 << 4);	// use sprite palette
 
 						// if the sprite is sprite zero ...
-						if (scanline_sprite_indices[i]==0) {
+						if (scanline_sprite_indices[i] == 0) {
 							is_sprite_0 = true;
 						}
 						sprite_behind_bgrd = OAM[scanline_sprite_indices[i]].attribute & (1 << 5);
@@ -513,32 +515,33 @@ void PPU::clock()
 						break;
 					}
 				}
-				uint8_t color_index;
-				if (((bgrd_color&0x3)==0) && ((sprite_color&0x3)==0)) {
-					color_index = ppubus.read_byte(0x3F00);
-				}
-				else if ((bgrd_color & 0x3) && ((sprite_color & 0x3) == 0)) {
+			}
+			uint8_t color_index;
+			if (((bgrd_color&0x3)==0) && ((sprite_color&0x3)==0)) {
+				color_index = ppubus.read_byte(0x3F00);
+			}
+			else if ((bgrd_color & 0x3) && ((sprite_color & 0x3) == 0)) {
+				color_index = ppubus.read_byte(0x3F00 + bgrd_color);
+			}
+			else if (((bgrd_color & 0x3) == 0) && (sprite_color & 0x3)) {
+				color_index = ppubus.read_byte(0x3F00 + sprite_color);
+			}
+			// Both hit
+			else {
+				if (sprite_behind_bgrd) {
 					color_index = ppubus.read_byte(0x3F00 + bgrd_color);
 				}
-				else if (((bgrd_color & 0x3) == 0) && (sprite_color & 0x3)) {
+				else {
 					color_index = ppubus.read_byte(0x3F00 + sprite_color);
 				}
-				// Both hit
-				else {
-					if (sprite_behind_bgrd) {
-						color_index = ppubus.read_byte(0x3F00 + bgrd_color);
-					}
-					else {
-						color_index = ppubus.read_byte(0x3F00 + sprite_color);
-					}
-					if (is_sprite_0) {
-						sprite0_hit = true;
-					}
-					// ADD SPRITE 0 FUNCTION LATER!!!!!
+				if (is_sprite_0) {
+					sprite0_hit = true;
 				}
+				// ADD SPRITE 0 FUNCTION LATER!!!!!
+			}
 
-				sf::Uint32 pixel_color = colors[color_index];
-				screen.set_pixel(cycle - 1, scanline, sf::Color(pixel_color));
+			sf::Uint32 pixel_color = colors[color_index];
+			screen.set_pixel(cycle - 1, scanline, sf::Color(pixel_color));
 
 
 			update_shifters(*this);
@@ -591,7 +594,7 @@ void PPU::clock()
 				palette_bgrd[0] = 0xFF;
 			}
 			if (palette & 1) {
-				palette_bgrd[0] = 0xFF;
+				palette_bgrd[1] = 0xFF;
 			}
 			increment_horizontal(*this);
 

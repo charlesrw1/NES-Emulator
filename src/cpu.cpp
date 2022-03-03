@@ -33,7 +33,7 @@ void CPU::step()
 
 	uint8_t opcode = next_byte(*this);
 	
-	LOG(CPU_Info) << std::hex << "PC: " << +(pc - 1) << ", Opcode: " << +opcode << std::endl;
+	//LOG(CPU_Info) << std::hex << "PC: " << +(pc - 1) << ", Opcode: " << +opcode << std::endl;
 
 	execute_opcode(*this, opcode);
 
@@ -306,38 +306,39 @@ inline void transfer(CPU& c, uint8_t& dest, uint8_t val, bool set_flags = true)
 inline uint8_t lsr(CPU& c, uint8_t val)
 {
 	c.cf = val & 1;
-	c.zf = (val >> 1) == 0;
 	val = val >> 1;
-	c.nf = 0;
+	c.zf = (val &0xFF) == 0;
+	c.nf = val & 0x0080;
 	return val;
 }
 inline uint8_t asl(CPU& c, uint8_t val)
 {
-	c.cf = val & (1 << 7);
-	val = val << 1;
-	c.zf = val == 0;
-	c.nf = val & (1 << 7);
-	return val;
+	uint16_t temp = val << 1;
+	c.cf = (temp & 0xFF00) > 0;
+	//val = val << 1;
+	c.zf = (temp&0xff) == 0;
+	c.nf = temp & (1 << 7);
+	return temp;
 }
 inline uint8_t ror(CPU& c, uint8_t val)
 {
-	uint8_t temp;
-	temp = val & 1;
-	val = (val >> 1) | (c.cf << 7);
-	c.nf = c.cf;
-	c.cf = temp;
-	c.zf = val == 0;
-	return val;
+	uint16_t temp;
+	//temp = val & 1;
+	temp = uint16_t(val >> 1) | uint16_t(c.cf << 7);
+	c.nf = temp & 0x80;
+	c.cf = val & 1;
+	c.zf = (temp&0x00ff) == 0;
+	return temp;
 }
 inline uint8_t rol(CPU& c, uint8_t val)
 {
-	uint8_t temp;
-	temp = val & (1 << 7);
-	val = (val << 1) | c.cf;
-	c.nf = val & (1 << 7);
-	c.cf = temp;
-	c.zf = val == 0;
-	return val;
+	uint16_t temp;
+	//temp = val & (1 << 7);
+	temp = uint16_t(val << 1) | c.cf;
+	c.nf = temp & (1 << 7);
+	c.cf = temp & 0xff00;
+	c.zf = (temp&0x00ff) == 0;
+	return temp;
 }
 inline uint8_t zpg(CPU& c)
 {
