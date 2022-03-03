@@ -124,6 +124,7 @@ void compare(Bus c2, CPU& c)
 	assert(c2.cpu.y == c.yr);
 	
 }
+*/
 
 int run_nestest(Emulator& app)
 {
@@ -131,17 +132,17 @@ int run_nestest(Emulator& app)
 	//app.cpu.reset();
 	app.cpu.pc = 0xC000;
 
-	Bus olc;
-	olc.cpu.pc = 0xC000;
-	olc.ram = new uint8_t[0xFFFF];
-	olc.cpu.stkp = 0xFD;
+	//Bus olc;
+	//olc.cpu.pc = 0xC000;
+	//olc.ram = new uint8_t[0xFFFF];
+	//olc.cpu.stkp = 0xFD;
 
 	std::ifstream rom("nestest.nes", std::ios::binary);
 	if (!rom) return 1;
 	rom.seekg(0, std::ios_base::end);
 	int length = rom.tellg();
 	rom.seekg(0, ios_base::beg);
-	rom.read((char*)&olc.ram[0xC000 - 0x10], 0x4000);
+	//rom.read((char*)&olc.ram[0xC000 - 0x10], 0x4000);
 
 	std::ifstream nestestlog("nestest.log");
 	if (!nestestlog) return 1;
@@ -153,9 +154,9 @@ int run_nestest(Emulator& app)
 		getline(nestestlog, line);
 		assert_log_and_cpu(app.cpu, line);
 		app.cpu.step();
-		olc.cpu.clock();
+		//olc.cpu.clock();
 
-		compare(olc,app.cpu);
+		//compare(olc,app.cpu);
 
 		// 0xC6BD is start of illegal opcode tests, I haven't implmented
 		// those in my emulator
@@ -167,31 +168,27 @@ int run_nestest(Emulator& app)
 	}
 	return 1;
 }
-*/
 
+#define EVIL_MARIO_HACK
 
 
 int main()
 {
-	Log::log_level = Debug;
+	Log::log_level = Error;
 	std::ofstream log_file("log_dump.txt");
-	Log::set_stream(&std::cout);
+	Log::set_stream(&log_file);
 
 	sf::RenderWindow window(sf::VideoMode(256*4, 240*4), "NES-EMULATOR");
 	window.setView(sf::View(sf::FloatRect(0, 0, 256, 240)));
 	Emulator app(window);
 	app.load_cartridge("smb.nes");
-	//cart.load_from_file("nestest.nes");
-	//c.memory = new uint8_t[0xFFFF];
+
 	app.cpu.pc = 0xC000;
 	app.cpu.sp = 0xFD;
 	app.cpu.inf = 1; 
-	//app.cpu.cycles = 7;
+
 	app.cpu.reset();
-	//sn::MainBus mb;
-	//sn::CPU c2(mb);
-	//c2.r_PC = 0xC000;
-	
+
 	//return run_nestest(app);
 
 	uint64_t cycles=0;

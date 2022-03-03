@@ -8,7 +8,7 @@
 
 const char* const log_strings[] = { 
 	"\033[35m[Debug] \033[m", 
-	"\033[94m[CPU Info] \033[m", 
+	"", 
 	"\033[34m[PPU Info] \033[m",
 	"\033[32m[Info] \033[m",
 	"\033[33m[Warning] \033[m", 

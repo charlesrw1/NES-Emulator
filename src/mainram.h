@@ -2,6 +2,9 @@
 #ifndef MAINRAM_H
 #define MAINRAM_H
 #include "controller.h"
+
+#define EVIL_MARIO_HACK
+
 struct PPU;
 struct Cartridge;
 class MainRAM

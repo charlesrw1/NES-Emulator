@@ -16,6 +16,8 @@ struct CPU
 	}
 	
 	uint64_t cycles;
+	uint64_t total_cycles=0;
+
 	
 	// accumulator, x register, y register
 	uint8_t ar, xr, yr;

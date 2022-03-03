@@ -20,7 +20,8 @@
 //		   PPU -> PPUBUS --> MAPPER --> CARTRIDGE
 //			V
 //		  SCREEN
-
+const sf::Keyboard::Key input_keys[8] = { sf::Keyboard::A,sf::Keyboard::S,sf::Keyboard::Q,sf::Keyboard::W,
+		sf::Keyboard::Up, sf::Keyboard::Down, sf::Keyboard::Left, sf::Keyboard::Right };
 class Emulator
 {
 public:
@@ -43,6 +44,15 @@ public:
 		uint64_t total_cycles = 0;
 		// About 1 frame
 		//main_ram.cont1.update();
+
+		uint8_t input = 0;
+		for (int i = 0; i < 8; i++) {
+			if (sf::Keyboard::isKeyPressed(input_keys[i])) {
+				input |= (1 << i);
+			}
+		}
+		main_ram.cached_controller_port1 = input;
+
 		while (total_cycles < 29780) {
 
 

@@ -3,6 +3,9 @@
 #include "mapper.h"
 #include "ppu.h"
 
+#include <bitset>
+
+
 const int scanlines_pf = 262;
 const int clocks_psl = 342;
 
@@ -20,6 +23,22 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 {
 	// 2KB zero page, stack, and ram mirrored to 0x2000
 	if (addr < 0x2000) {
+		if (addr == 0x0) {
+			LOG(Debug) << "TEMP JOYPAD BITS READ: " << std::bitset<8>(memory[addr & 0x07FF]) << std::endl;
+		}
+		if (addr == 0x06fc) {
+			LOG(Debug) << "JOYPAD BITS READ: " << std::bitset<8>(memory[addr & 0x07FF]) << std::endl;
+		}
+#ifdef EVIL_MARIO_HACK
+		if (addr == 0x06fd) {
+			// Hail Mary, full of grace, the lord is with you. Bless art thou amoungt women and bless it is the fruit of thy womb Jesus christ.
+			// Holy Mary mother of god, pray for us sinners now and at the hour of our death amen.
+			return 0;
+		}
+#endif
+		if (addr == 0x074a) {
+			LOG(Debug) << "JOYPAD BIT MASK READ: " << std::bitset<8>(memory[addr & 0x07FF]) << std::endl;
+		}
 		return memory[addr & 0x07FF];
 	}
 	// 8 PPU registers mirrored for 2KB
@@ -29,12 +48,10 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 	// IO and APU registers
 	else if (addr < 0x4020) {
 		if (addr == 0x4016) {
-			uint8_t res = (controller_port_1&(1<<7))>0;
-			controller_port_1 <<= 1;
+			LOG(Debug) << "INPUT READ " << std::bitset<8>(controller_port_1) << std::endl;
+			uint8_t res = (controller_port_1&1);
+			controller_port_1 >>= 1;
 	
-			if (res != 0) {
-				LOG(Debug) << "INPUT DETECTED\n";
-			}
 			return res;
 		}
 	}
@@ -47,6 +64,20 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 void MainRAM::write_byte(uint16_t addr, uint8_t val)
 {
 	if (addr < 0x2000) {
+		if (addr == 0x0) {
+			LOG(Debug) << "TEMP JOYPAD BITS SAVED: " << std::bitset<8>(val) << std::endl;
+		}
+		if (addr == 0x06fc) {
+			LOG(Debug) << "JOYPAD BITS SAVED " << std::bitset<8>(val) << std::endl;
+		}
+#ifdef EVIL_MARIO_HACK
+		if (addr == 0x074a) {
+			LOG(Debug) << "JOYPAD BIT MASK SAVED " << std::bitset<8>(val) << std::endl;
+			// Hail Mary, full of grace, the lord is with you. Bless art thou amoungt women and bless it is the fruit of thy womb Jesus christ.
+			// Holy Mary mother of god, pray for us sinners now and at the hour of our death amen.
+			return;
+		}
+#endif
 		memory[addr & 0x07FF] = val;
 	}
 	else if (addr < 0x4000) {
@@ -63,15 +94,8 @@ void MainRAM::write_byte(uint16_t addr, uint8_t val)
 
 		// accesses IO registers
 		if (addr == 0x4016) {
-			if (val == 1) {
-				//controller_port_1 = cached_controller_port1;
-					uint8_t input = 0;
-					for (int i = 0; i < 8; i++) {
-						if (sf::Keyboard::isKeyPressed(input_keys[7-i])) {
-							input |= (1 << i);
-						}
-					}
-					controller_port_1 = input;
+			if (val == 0) {
+				controller_port_1 = cached_controller_port1;
 			}
 		}
 	}

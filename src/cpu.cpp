@@ -26,6 +26,19 @@ void execute_opcode(CPU& c, uint8_t opcode);
 uint8_t next_byte(CPU& c);
 void push_byte(CPU& c, uint8_t val);
 void push_status(CPU& c, bool break_set=1);
+uint8_t cpu_status(CPU& c)
+{
+	uint8_t res = 0;
+	res |= (c.cf << 0);
+	res |= (c.zf << 1);
+	res |= (c.inf << 2);
+	res |= (c.df << 3);
+	res |= (0 << 4);
+	res |= (1 << 5);
+	res |= (c.vf << 6);
+	res |= (c.nf << 7);
+	return res;
+}
 void CPU::step()
 {
 	extra_cycle_adr = 0;
@@ -33,12 +46,19 @@ void CPU::step()
 
 	uint8_t opcode = next_byte(*this);
 	
-	//LOG(CPU_Info) << std::hex << "PC: " << +(pc - 1) << ", Opcode: " << +opcode << std::endl;
+	LOG(CPU_Info) << "     " << std::hex << +(pc - 1)
+		<< " $" << +opcode 
+		<< " A: " << +ar 
+		<< " X: " << +xr
+		<< " Y: " << +yr
+		<< " P:" << +cpu_status(*this)
+		<< " CPU CYCLE:" << std::dec << total_cycles << std::endl;
 
 	execute_opcode(*this, opcode);
 
 	cycles += cpu_cycles[opcode];
 	cycles += (extra_cycle_adr & opcode_extra_cycle);
+	total_cycles += cycles;
 }
 void CPU::irq()
 {
@@ -303,42 +323,46 @@ inline void transfer(CPU& c, uint8_t& dest, uint8_t val, bool set_flags = true)
 		c.nf = val & 0x80;
 	}
 }
+inline void set_zero_negative_flags(CPU& c, uint8_t val)
+{
+	c.nf = 0;
+	c.zf = 0;
+	if (val & 0x80) {
+		c.nf = 1;
+	}
+	if (val == 0) {
+		c.zf = 1;
+	}
+}
 inline uint8_t lsr(CPU& c, uint8_t val)
 {
-	c.cf = val & 1;
+	c.cf = (val & 1);
 	val = val >> 1;
-	c.zf = (val &0xFF) == 0;
-	c.nf = val & 0x0080;
+	set_zero_negative_flags(c, val);
 	return val;
 }
 inline uint8_t asl(CPU& c, uint8_t val)
 {
-	uint16_t temp = val << 1;
-	c.cf = (temp & 0xFF00) > 0;
-	//val = val << 1;
-	c.zf = (temp&0xff) == 0;
-	c.nf = temp & (1 << 7);
-	return temp;
+	c.cf = (val & (1 << 7))>0;
+	val = val << 1;
+	set_zero_negative_flags(c, val);
+	return val;
 }
 inline uint8_t ror(CPU& c, uint8_t val)
 {
-	uint16_t temp;
-	//temp = val & 1;
-	temp = uint16_t(val >> 1) | uint16_t(c.cf << 7);
-	c.nf = temp & 0x80;
+	uint8_t carry_flag = c.cf;
 	c.cf = val & 1;
-	c.zf = (temp&0x00ff) == 0;
-	return temp;
+	val = (val >> 1) | (carry_flag << 7);
+	set_zero_negative_flags(c, val);
+	return val;
 }
 inline uint8_t rol(CPU& c, uint8_t val)
 {
-	uint16_t temp;
-	//temp = val & (1 << 7);
-	temp = uint16_t(val << 1) | c.cf;
-	c.nf = temp & (1 << 7);
-	c.cf = temp & 0xff00;
-	c.zf = (temp&0x00ff) == 0;
-	return temp;
+	uint8_t carry_flag = c.cf;
+	c.cf =( val & (1 << 7))>0;
+	val = (val << 1) | carry_flag;
+	set_zero_negative_flags(c, val);
+	return val;
 }
 inline uint8_t zpg(CPU& c)
 {
