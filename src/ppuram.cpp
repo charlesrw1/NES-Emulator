@@ -34,7 +34,10 @@ uint8_t PPURAM::read_byte(uint16_t addr)
 		}
 	}
 	else {
-		return palette_ram[addr & 0x1F];
+		if (addr == 0x3f10)
+			return palette_ram[0];
+		else
+			return palette_ram[addr & 0x1f];
 	}
 }
 void PPURAM::write_byte(uint16_t addr, uint8_t val) 
@@ -58,7 +61,10 @@ void PPURAM::write_byte(uint16_t addr, uint8_t val)
 		}
 	}
 	else {
-		palette_ram[addr & 0x1F] = val;
+		if (addr == 0x3f10)
+			palette_ram[0] = val;
+		else
+			palette_ram[addr & 0x1f] = val;
 	}
 }
 void PPURAM::update_mirroring()

@@ -33,7 +33,7 @@ void CPU::step()
 
 	uint8_t opcode = next_byte(*this);
 	
-	//LOG(CPU_Info) << std::hex << "PC: " << +(pc - 1) << ", Opcode: " << +opcode << std::endl;
+	LOG(CPU_Info) << std::hex << "PC: " << +(pc - 1) << ", Opcode: " << +opcode << std::endl;
 
 	execute_opcode(*this, opcode);
 
@@ -424,6 +424,10 @@ inline void brk(CPU& c)
 #define ABSXV c.read_byte(absolute_x(c))
 void execute_opcode(CPU& c, uint8_t opcode)
 {
+	if (c.pc == 0xc22c+1)
+	{
+		printf("");
+	}
 	switch (opcode)
 	{
 	case 0x65: c.ar = addb(c, c.ar, c.read_byte(next_byte(c)), c.cf); break; // ADC zpg

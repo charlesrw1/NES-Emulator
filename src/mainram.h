@@ -1,6 +1,7 @@
 #include <cstdint>
 #ifndef MAINRAM_H
 #define MAINRAM_H
+#include "controller.h"
 struct PPU;
 struct Cartridge;
 class MainRAM
@@ -17,8 +18,11 @@ public:
 	uint8_t cached_controller_port1;
 	uint8_t controller_port_1;
 
+	Controller cont1;
+
 	uint8_t* memory;
 
 	bool DMA_request;
+	uint8_t DMA_page;
 };
 #endif // !MAINRAM_H

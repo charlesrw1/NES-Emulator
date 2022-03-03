@@ -2,6 +2,8 @@
 #include "ppuram.h"
 #include "video_screen.h"
 
+#include <cassert>
+
 const sf::Uint32 colors[] = {
 			0x666666ff, 0x002a88ff, 0x1412a7ff, 0x3b00a4ff, 0x5c007eff, 0x6e0040ff, 0x6c0600ff, 0x561d00ff,
 			0x333500ff, 0x0b4800ff, 0x005200ff, 0x004f08ff, 0x00404dff, 0x000000ff, 0x000000ff, 0x000000ff,
@@ -32,6 +34,8 @@ PPU::PPU(PPURAM& ppu_ram, VideoScreen& screen) : ppubus(ppu_ram), screen(screen)
 	data_address = 0;
 	temp_addr = 0;
 
+	memset(OAM, 0xFF, sizeof(ObjectSprite) * 64);
+
 	cycle = 0;
 	scanline = -1;
 	render_state = PRERENDER;
@@ -58,14 +62,18 @@ uint8_t PPU::RegisterRead(uint16_t addr)
 		// TEMPORARY, add in PPURAM read functionality,
 		// $2007 reads from bus @ data_address, written in $2006
 		// 
-		res = data_buffer;
-		data_buffer = ppubus.read_byte(data_address);
+		//res = data_buffer;
+		//data_buffer = ppubus.read_byte(data_address);
+
+		res = ppubus.read_byte(data_address);
+		data_address += (vram_increment) ? 32 : 1;
 
 		// Palette ram only takes one cycle, other must read twice from OAMDATA
-		if (data_address >= 0x3F00) {
+		if (data_address < 0x3F00) {
+			uint8_t temp = res;
 			res = data_buffer;
+			data_buffer = temp;
 		}
-		data_address += (vram_increment) ? 32 : 1;
 		break;
 	default:
 		LOG(Error) << "Read attempt @ write only register: " << std::hex << +addr << std::endl;
@@ -148,9 +156,6 @@ void PPU::RegisterWrite(uint16_t addr, uint8_t val)
 		break;
 	case 0x2007:
 	{
-		if (data_address > 0x3eff) {
-			printf("");
-		}
 	ppubus.write_byte(data_address, val);
 	data_address += (vram_increment) ? 32 : 1;
 	break;
@@ -206,18 +211,16 @@ inline void update_shifters(PPU& p)
 	p.palette_bgrd[1] <<= 1;
 	p.palette_bgrd[0] |= (uint8_t)p.next_palette_latch[0];
 	p.palette_bgrd[1] |= (uint8_t)p.next_palette_latch[1];
-	/*
 	for (int i = 0; i < p.num_sprites_scanline; i++) {
-		if (p.scanline_sprite_xpos[i] > 0) {
-			--p.scanline_sprite_xpos[i];
-		}
-		// sprites are considered active if xpos is 0
 		if (p.scanline_sprite_xpos[i] == 0) {
 			p.scanline_sprite_pattern_shifters[i][0] <<= 1;
 			p.scanline_sprite_pattern_shifters[i][1] <<= 1;
 		}
+		if (p.scanline_sprite_xpos[i] > 0) {
+			--p.scanline_sprite_xpos[i];
+		}
+		// sprites are considered active if xpos is 0
 	}
-	*/
 }
 
 
@@ -325,6 +328,42 @@ inline uint8_t fetch_pattern_table(PPU& p, uint8_t location, bool upper_bit_plan
 	address |= (p.data_address >> 12) & 0x7;	// add fine y offset
 	return p.ppubus.read_byte(address);
 }
+// OAM Sprite Attribute: 
+// 76543210
+// ||||||||
+// ||||||++-Palette(4 to 7) of sprite
+// |||+++---Unimplemented
+// ||+------Priority(0: in front of background; 1: behind background)
+// |+-------Flip sprite horizontally
+// +--------Flip sprite vertically
+
+inline uint8_t fetch_sprite_pattern_table(const PPU& p, const ObjectSprite& sprite, bool upper_bit_plane)
+{
+	uint16_t address = 0;
+	address |= upper_bit_plane << 3;
+	address |= sprite.tile_num << 4;
+	address |= p.sprite_pattern_table << 12;
+	
+	uint8_t y_offset = p.scanline - sprite.y_coord;
+	assert(y_offset <= 7);
+
+	if (sprite.attribute & (1 << 7)) {	// Flip vertically
+		y_offset = 7 - y_offset;
+	}
+	assert(y_offset<= 7);
+	address |= (y_offset);
+
+	uint8_t pattern = p.ppubus.read_byte(address);
+	if (sprite.attribute & (1 << 6)) {	// Flip horizontally
+		uint8_t b = pattern;
+		b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+		b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+		b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+		pattern = b;
+	}
+
+	return pattern;
+}
 // Attribute data:
 // 7654 3210
 // |||| ||++-Color bits 3-2 for top left quadrant of this byte
@@ -368,7 +407,10 @@ inline void fetch_and_append_tile_shifters(PPU& p)
 
 	increment_horizontal(p);
 }
+inline uint8_t reverse_bits(uint8_t num)
+{
 
+}
 void PPU::clock()
 {
 
@@ -426,26 +468,76 @@ void PPU::clock()
 		}
 		break;
 	case VISIBLE:
+// FIXME: refractor and add show_sprites
 		if (show_background && cycle >= 1 && cycle <= 256) {
 			// Every 8 cycles, fetch new tile
 			if ((cycle - 1) % 8 == 0 && cycle > 1) {
 				fetch_and_append_tile_shifters(*this);
 			}
-				uint8_t color = 0;
+				uint8_t bgrd_color = 0;
 				// Select bit from shifter, and shift over hi bit 1
-				color |= ((patterntable_bgrd[0] >> (15 - fine_x_scroll)) & 1) << 1;
-				color |= ((patterntable_bgrd[1] >> (15 - fine_x_scroll)) & 1);
+				bgrd_color |= ((patterntable_bgrd[0] >> (15 - fine_x_scroll)) & 1) << 1;
+				bgrd_color |= ((patterntable_bgrd[1] >> (15 - fine_x_scroll)) & 1);
 
-				color |= ((palette_bgrd[0] >> (7 - fine_x_scroll)) & 1) << 3;
-				color |= ((palette_bgrd[1] >> (7 - fine_x_scroll)) & 1) << 2;
+				bgrd_color |= ((palette_bgrd[0] >> (7 - fine_x_scroll)) & 1) << 3;
+				bgrd_color |= ((palette_bgrd[1] >> (7 - fine_x_scroll)) & 1) << 2;
 
 				//color |= (1 << 4);
-				uint8_t idx = ppubus.read_byte(0x3F00 + color);
+				//uint8_t idx = ppubus.read_byte(0x3F00 + bgrd_color);
 
-				sf::Uint32 pixel_color = colors[idx];
 
-				//screen.set_pixel(cycle - 1, scanline, sf::Color(color*80, color*80, color*80));
+				uint8_t sprite_color = 0;
+				bool is_sprite_0 = false;
+				bool sprite_behind_bgrd = false;
 
+ 				for (int i = 0; i < num_sprites_scanline; i++) {
+					if (scanline_sprite_xpos[i] == 0) {
+						sprite_color |= ((scanline_sprite_pattern_shifters[i][0] >> 7)&1) << 1;
+						sprite_color |= (scanline_sprite_pattern_shifters[i][1] >> 7)&1;
+
+						// if its transparent, keep looking for color
+						if (sprite_color == 0) continue;
+
+						sprite_color |= (scanline_sprite_palette_latch[i][0]) << 3;
+						sprite_color |= (scanline_sprite_palette_latch[i][1]) << 2;
+
+						sprite_color |= (1 << 4);	// use sprite palette
+
+						// if the sprite is sprite zero ...
+						if (scanline_sprite_indices[i]==0) {
+							is_sprite_0 = true;
+						}
+						sprite_behind_bgrd = OAM[scanline_sprite_indices[i]].attribute & (1 << 5);
+
+						// break on first color found
+						break;
+					}
+				}
+				uint8_t color_index;
+				if (((bgrd_color&0x3)==0) && ((sprite_color&0x3)==0)) {
+					color_index = ppubus.read_byte(0x3F00);
+				}
+				else if ((bgrd_color & 0x3) && ((sprite_color & 0x3) == 0)) {
+					color_index = ppubus.read_byte(0x3F00 + bgrd_color);
+				}
+				else if (((bgrd_color & 0x3) == 0) && (sprite_color & 0x3)) {
+					color_index = ppubus.read_byte(0x3F00 + sprite_color);
+				}
+				// Both hit
+				else {
+					if (sprite_behind_bgrd) {
+						color_index = ppubus.read_byte(0x3F00 + bgrd_color);
+					}
+					else {
+						color_index = ppubus.read_byte(0x3F00 + sprite_color);
+					}
+					if (is_sprite_0) {
+						sprite0_hit = true;
+					}
+					// ADD SPRITE 0 FUNCTION LATER!!!!!
+				}
+
+				sf::Uint32 pixel_color = colors[color_index];
 				screen.set_pixel(cycle - 1, scanline, sf::Color(pixel_color));
 
 
@@ -461,15 +553,24 @@ void PPU::clock()
 		// load sprites for next scanline, real hardware does this during regular rendering
 		// simpler to just do it at end of scanline
 		if (cycle > 340) {			
-			/*
 			uint8_t height = (tall_sprites) ? 16 : 8;
 			num_sprites_scanline = 0;
 			for (int i = 0; i < 64 && num_sprites_scanline < 8; i++) {
 				if (OAM[i].y_coord > scanline) continue;
-				if (scanline - OAM[i].y_coord > height) continue;
-				scanline_sprite_indices[num_sprites_scanline++] = i;
+				if (scanline - OAM[i].y_coord >= height) continue;
+				scanline_sprite_indices[num_sprites_scanline] = i;
+
+				uint8_t pattern_hi = fetch_sprite_pattern_table(*this, OAM[i], 1);
+				uint8_t pattern_lo = fetch_sprite_pattern_table(*this, OAM[i], 0);
+
+				scanline_sprite_pattern_shifters[num_sprites_scanline][0] = pattern_hi;
+				scanline_sprite_pattern_shifters[num_sprites_scanline][1] = pattern_lo;
+				scanline_sprite_palette_latch[num_sprites_scanline][0] = OAM[i].attribute & 0x2;
+				scanline_sprite_palette_latch[num_sprites_scanline][1] = OAM[i].attribute & 0x1;
+				scanline_sprite_xpos[num_sprites_scanline] = OAM[i].x_coord;
+
+				num_sprites_scanline++;
 			}
-			*/
 		// Load next 2 tiles into shifters
 			patterntable_bgrd[0] = 0;
 			patterntable_bgrd[1] = 0;

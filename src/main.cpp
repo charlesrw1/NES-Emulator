@@ -180,12 +180,12 @@ int main()
 	sf::RenderWindow window(sf::VideoMode(256*4, 240*4), "NES-EMULATOR");
 	window.setView(sf::View(sf::FloatRect(0, 0, 256, 240)));
 	Emulator app(window);
-	app.load_cartridge("donkey_kong.nes");
+	app.load_cartridge("pacman.nes");
 	//cart.load_from_file("nestest.nes");
 	//c.memory = new uint8_t[0xFFFF];
 	app.cpu.pc = 0xC000;
 	app.cpu.sp = 0xFD;
-	app.cpu.inf = 1;
+	app.cpu.inf = 1; 
 	//app.cpu.cycles = 7;
 	app.cpu.reset();
 	//sn::MainBus mb;
@@ -216,9 +216,9 @@ int main()
 				break;
 			}
 		}
-		app.poll_input();
 		app.step();
-		//sf::sleep(sf::milliseconds(16));
+		sf::sleep(sf::milliseconds(2));
+		app.poll_input();
 
 	}
 	
