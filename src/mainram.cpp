@@ -29,13 +29,12 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 		if (addr == 0x06fc) {
 			LOG(Debug) << "JOYPAD BITS READ: " << std::bitset<8>(memory[addr & 0x07FF]) << std::endl;
 		}
-#ifdef EVIL_MARIO_HACK
+
 		if (addr == 0x06fd) {
 			// Hail Mary, full of grace, the lord is with you. Bless art thou amoungst women and blessed is the fruit of thy womb Jesus christ.
 			// Holy Mary, mother of god, pray for us sinners, now and at the hour of our death. Amen.
 			return 0;
 		}
-#endif
 		if (addr == 0x074a) {
 			LOG(Debug) << "JOYPAD BIT MASK READ: " << std::bitset<8>(memory[addr & 0x07FF]) << std::endl;
 		}
@@ -70,14 +69,9 @@ void MainRAM::write_byte(uint16_t addr, uint8_t val)
 		if (addr == 0x06fc) {
 			LOG(Debug) << "JOYPAD BITS SAVED " << std::bitset<8>(val) << std::endl;
 		}
-#ifdef EVIL_MARIO_HACK
 		if (addr == 0x074a) {
 			LOG(Debug) << "JOYPAD BIT MASK SAVED " << std::bitset<8>(val) << std::endl;
-			// Hail Mary, full of grace, the lord is with you. Bless art thou amoungst women and blessed is the fruit of thy womb Jesus christ.
-			// Holy Mary, mother of god, pray for us sinners, now and at the hour of our death. Amen.
-			return;
 		}
-#endif
 		memory[addr & 0x07FF] = val;
 	}
 	else if (addr < 0x4000) {

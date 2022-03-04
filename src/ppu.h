@@ -39,8 +39,8 @@ struct PPU
 	
 	// $2001 mask
 	bool greyscale;
-	bool hide_edge_background;
-	bool hide_edge_sprites;
+	bool show_edge_background;
+	bool show_edge_sprites;
 	bool show_background;
 	bool show_sprites;
 	bool red_tint;

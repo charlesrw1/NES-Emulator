@@ -1,7 +1,4 @@
-﻿// NES-Emulator.cpp : Defines the entry point for the application.
-//
-
-#include "main.h"
+﻿#include "main.h"
 #include "cpu.h"
 #include <fstream>
 #include <sstream>
@@ -12,8 +9,6 @@
 #include "mapper.h"
 #include "emulator.h"
 #include "video_screen.h"
-
-//#include "olcNES/Part#2 - CPU/Bus.h"
 
 std::ostream* Log::stream;
 Level Log::log_level;
@@ -108,41 +103,11 @@ void assert_log_and_cpu(CPU& c, std::string& log_line)
 		printf("CYC: %lld != %lld\n", c.cycles, cycles);
 	}
 }
-/*
-void compare(Bus c2, CPU& c)
-{
-
-	for (int i = 0; i < 0x2000; i++){
-		assert(c2.ram[i] == c.mem.memory[i]);
-	}
-	assert(c2.cpu.a == c.ar);
-	uint8_t mst = get_cpu_status_register(c);
-	//assert(st == mst);
-	assert(c2.cpu.pc == c.pc);
-	assert(c2.cpu.stkp == c.sp);
-	assert(c2.cpu.x == c.xr);
-	assert(c2.cpu.y == c.yr);
-	
-}
-*/
 
 int run_nestest(Emulator& app)
 {
 	app.load_cartridge("nestest.nes");
-	//app.cpu.reset();
 	app.cpu.pc = 0xC000;
-
-	//Bus olc;
-	//olc.cpu.pc = 0xC000;
-	//olc.ram = new uint8_t[0xFFFF];
-	//olc.cpu.stkp = 0xFD;
-
-	std::ifstream rom("nestest.nes", std::ios::binary);
-	if (!rom) return 1;
-	rom.seekg(0, std::ios_base::end);
-	int length = rom.tellg();
-	rom.seekg(0, ios_base::beg);
-	//rom.read((char*)&olc.ram[0xC000 - 0x10], 0x4000);
 
 	std::ifstream nestestlog("nestest.log");
 	if (!nestestlog) return 1;
@@ -154,9 +119,6 @@ int run_nestest(Emulator& app)
 		getline(nestestlog, line);
 		assert_log_and_cpu(app.cpu, line);
 		app.cpu.step();
-		//olc.cpu.clock();
-
-		//compare(olc,app.cpu);
 
 		// 0xC6BD is start of illegal opcode tests, I haven't implmented
 		// those in my emulator
@@ -166,10 +128,40 @@ int run_nestest(Emulator& app)
 		}
 		++counter;
 	}
-	return 1;
+	return 0;
+}
+sf::FloatRect calcView(const sf::Vector2f& windowSize, float pacRatio)
+{
+	sf::Vector2f viewSize = windowSize;
+	sf::FloatRect viewport(0.f, 0.f, 1.f, 1.f);
+	float ratio = viewSize.x / viewSize.y;
+
+	// too high
+	if (ratio < pacRatio) {
+		viewSize.y = viewSize.x / pacRatio;
+		float vp_h = viewSize.y / windowSize.y;
+		viewport.height = vp_h;
+		viewport.top = (1.f - vp_h) / 2.f;
+	}
+	// too wide
+	else if (ratio > pacRatio) {
+		viewSize.x = viewSize.y * pacRatio;
+		float vp_w = viewSize.x / windowSize.x;
+
+		viewport.width = vp_w;
+		viewport.left = (1.f - vp_w) / 2.f;
+	}
+	return viewport;
+}
+void OnResize(sf::RenderWindow& window, sf::Event& event)
+{
+	float h = event.size.height;
+	float w = event.size.width;
+	sf::View view = window.getView();
+	view.setViewport(calcView({ w,h }, 254.f/240.f));
+	window.setView(view);
 }
 
-#define EVIL_MARIO_HACK
 
 
 int main()
@@ -179,13 +171,10 @@ int main()
 	Log::set_stream(&log_file);
 
 	sf::RenderWindow window(sf::VideoMode(256*4, 240*4), "NES-EMULATOR");
+	window.setFramerateLimit(60);
 	window.setView(sf::View(sf::FloatRect(0, 0, 256, 240)));
 	Emulator app(window);
-	app.load_cartridge("smb.nes");
-
-	app.cpu.pc = 0xC000;
-	app.cpu.sp = 0xFD;
-	app.cpu.inf = 1; 
+	app.load_cartridge("pacman.nes");
 
 	app.cpu.reset();
 
@@ -202,22 +191,20 @@ int main()
 			case sf::Event::Closed:
 				window.close();
 			case sf::Event::KeyPressed:
-				switch(event.key.code)
+				switch (event.key.code)
 				{
-				case sf::Keyboard::B:
-					printf("Break");
-					break;
-
 				}
+				break;
+			case sf::Event::Resized:
+				OnResize(window, event);
+				break;
 			default:
 				break;
 			}
 		}
 		app.step();
-		sf::sleep(sf::milliseconds(4));
 
 	}
 	
-	cout << "Hello CMake." << endl;
 	return 0;
 }

@@ -20,7 +20,7 @@ PPU::PPU(PPURAM& ppu_ram, VideoScreen& screen) : ppubus(ppu_ram), screen(screen)
 	nametable_addr = 0;
 	vram_increment = sprite_pattern_table = background_pattern_table = tall_sprites = generate_NMI = 0;
 	greyscale = show_background = show_sprites = red_tint = green_tint = blue_tint = 0;
-	hide_edge_background = hide_edge_sprites = 1;
+	show_edge_background = show_edge_sprites = 1;
 	sprite0_hit = v_blank = 0;
 
 	v_blank = 0;
@@ -37,8 +37,8 @@ PPU::PPU(PPURAM& ppu_ram, VideoScreen& screen) : ppubus(ppu_ram), screen(screen)
 	memset(OAM, 0xFF, sizeof(ObjectSprite) * 64);
 
 	cycle = 0;
-	scanline = -1;
-	render_state = PRERENDER;
+	scanline = 0;
+	render_state = VISIBLE;
 }
 uint8_t PPU::RegisterRead(uint16_t addr)
 {
@@ -100,8 +100,8 @@ void PPU::RegisterWrite(uint16_t addr, uint8_t val)
 		break;
 	case 0x2001:
 		greyscale = val & (1 << 0);
-		hide_edge_background = !(val & (1 << 1));
-		hide_edge_sprites = !(val & (1 << 2));
+		show_edge_background = (val & (1 << 1));
+		show_edge_sprites = (val & (1 << 2));
 		show_background = val & (1 << 3);
 		show_sprites = val & (1 << 4);
 		red_tint = val & (1 << 5);
@@ -272,7 +272,7 @@ inline void increment_vertical(PPU& p)
 	else {
 		p.data_address &= ~(0x7000);			// fine y = 0
 
- 		int y = (p.data_address & 0x03E0) >> 5;		// y = coarse y
+ 		int y = (p.data_address & 0x03E0) >> 5;	// y = coarse y
 		if (y == 29) {
 			y = 0;
 			p.data_address ^= 0x0800;			// toggle nametable y
@@ -381,8 +381,6 @@ inline uint8_t get_tile_palette_index(PPU& p, uint8_t attribute)
 		attribute >>= 2;
 	}
 	return attribute;
-	//int shift = ((p.data_address >> 4) & 4) | (p.data_address & 2);
-	//return ((attribute >> shift) & 0x3);
 }
 inline void fetch_and_append_tile_shifters(PPU& p)
 {
@@ -407,10 +405,6 @@ inline void fetch_and_append_tile_shifters(PPU& p)
 
 	increment_horizontal(p);
 }
-inline uint8_t reverse_bits(uint8_t num)
-{
-
-}
 void PPU::clock()
 {
 
@@ -428,8 +422,7 @@ void PPU::clock()
 			copy_vertical_bits(*this);
 		}
 		// load shifters for next scnaline
-		if (cycle > 340) {
-			// Clear just cause
+		if (cycle >= 340) {
 			patterntable_bgrd[0] = 0;
 			patterntable_bgrd[1] = 0;
 			next_palette_latch[0] = 0;
@@ -468,14 +461,13 @@ void PPU::clock()
 		}
 		break;
 	case VISIBLE:
-// FIXME: refractor and add show_sprites
 		if ((show_background || show_sprites) && cycle >= 1 && cycle <= 256) {
 			// Every 8 cycles, fetch new tile
 			if ((cycle - 1) % 8 == 0 && cycle > 1) {
 				fetch_and_append_tile_shifters(*this);
 			}
 			uint8_t bgrd_color = 0;
-			if (show_background && (!hide_edge_background || cycle >= 8)) {
+			if (show_background && (show_edge_background || cycle >= 8)) {
 				// Select bit from shifter, and shift over hi bit 1
 				bgrd_color |= ((patterntable_bgrd[0] >> (15 - fine_x_scroll)) & 1) << 1;
 				bgrd_color |= ((patterntable_bgrd[1] >> (15 - fine_x_scroll)) & 1);
@@ -491,7 +483,7 @@ void PPU::clock()
 			uint8_t sprite_color = 0;
 			bool is_sprite_0 = false;
 			bool sprite_behind_bgrd = false;
-			if (show_sprites && (!hide_edge_sprites || cycle >= 8)) {
+			if (show_sprites && (show_edge_sprites || cycle >= 8)) {
 				for (int i = 0; i < num_sprites_scanline; i++) {
 					if (scanline_sprite_xpos[i] == 0) {
 						sprite_color |= ((scanline_sprite_pattern_shifters[i][0] >> 7) & 1) << 1;
@@ -555,7 +547,7 @@ void PPU::clock()
 		}
 		// load sprites for next scanline, real hardware does this during regular rendering
 		// simpler to just do it at end of scanline
-		if (cycle > 340) {			
+		if (cycle >= 340) {			
 			uint8_t height = (tall_sprites) ? 16 : 8;
 			num_sprites_scanline = 0;
 			for (int i = 0; i < 64 && num_sprites_scanline < 8; i++) {
@@ -611,7 +603,7 @@ void PPU::clock()
 		break;
 	case POSTRENDER:
 		// scanline does nothing here
-		if (cycle > 340) {
+		if (cycle >= 340) {
 			++scanline;
 			cycle = -1;
 			render_state = VBLANK;
@@ -624,11 +616,11 @@ void PPU::clock()
 			send_nmi_output = true;
 			v_blank = true;
 		}
-		if (cycle > 340) {
+		if (cycle >= 340) {
 			cycle = -1;
 			++scanline;
 		}
-		if (scanline > 260) {
+		if (scanline > 261) {
 			scanline = -1;
 			render_state = PRERENDER;
 		}

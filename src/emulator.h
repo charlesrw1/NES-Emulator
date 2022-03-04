@@ -13,7 +13,7 @@
 
 // Class structure:
 // 
-// APU -----+
+// APU(TBD)-+
 //			V
 // CPU -> MAINBUS --------------+
 //			V					V
@@ -37,56 +37,6 @@ public:
 
 	void load_cartridge(std::string file);
 
-	void step()
-	{
-		static int cycles_since_nmi = 0;
-		static bool in_nmi = false;
-		uint64_t total_cycles = 0;
-		// About 1 frame
-		//main_ram.cont1.update();
-
-		uint8_t input = 0;
-		for (int i = 0; i < 8; i++) {
-			if (sf::Keyboard::isKeyPressed(input_keys[i])) {
-				input |= (1 << i);
-			}
-		}
-		main_ram.cached_controller_port1 = input;
-
-		while (total_cycles < 29780) {
-
-
-			for (int i = 0; i < cpu.cycles * 3; i++) {
-				ppu.clock();
-			}
-			cpu.cycles = 0;
-
-			if (main_ram.DMA_request) {
-				uint8_t* oam_ptr = reinterpret_cast<uint8_t*>(ppu.OAM);
-				for (int i = 0; i < 256; i++) {
-					// NESDEV wiki isn't clear, I assume the writes wrap around if oam_addr is anything greater than 0
-					uint8_t data = main_ram.read_byte((main_ram.DMA_page << 8) | uint8_t(i));
-					oam_ptr[uint8_t(i + ppu.oam_addr)] = data;
-				}
-				main_ram.DMA_request = false;
-				// Actually this could be either 513/514, maybe a problem
-				ppu.cycle += 513;
-			}
-
-			if (ppu.generate_NMI && ppu.send_nmi_output) {
-				ppu.send_nmi_output = false;
-				in_nmi = true;
-				cpu.nmi();
-			}
-
-			cpu.step();
-			
-			
-			total_cycles += cpu.cycles;
-			if (in_nmi) {
-				cycles_since_nmi += cpu.cycles;
-			}
-		}
-	}
+	void step();
 };
 #endif // !EMULATOR_H

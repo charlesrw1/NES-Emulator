@@ -26,19 +26,7 @@ void execute_opcode(CPU& c, uint8_t opcode);
 uint8_t next_byte(CPU& c);
 void push_byte(CPU& c, uint8_t val);
 void push_status(CPU& c, bool break_set=1);
-uint8_t cpu_status(CPU& c)
-{
-	uint8_t res = 0;
-	res |= (c.cf << 0);
-	res |= (c.zf << 1);
-	res |= (c.inf << 2);
-	res |= (c.df << 3);
-	res |= (0 << 4);
-	res |= (1 << 5);
-	res |= (c.vf << 6);
-	res |= (c.nf << 7);
-	return res;
-}
+
 void CPU::step()
 {
 	extra_cycle_adr = 0;
@@ -46,14 +34,6 @@ void CPU::step()
 
 	uint8_t opcode = next_byte(*this);
 	
-	LOG(CPU_Info) << "     " << std::hex << +(pc - 1)
-		<< " $" << +opcode 
-		<< " A: " << +ar 
-		<< " X: " << +xr
-		<< " Y: " << +yr
-		<< " P:" << +cpu_status(*this)
-		<< " CPU CYCLE:" << std::dec << total_cycles << std::endl;
-
 	execute_opcode(*this, opcode);
 
 	cycles += cpu_cycles[opcode];
@@ -106,7 +86,7 @@ void CPU::reset()
 	nf = vf = df = zf = cf = 0;
 	inf = 1;
 
-	cycles = 7;
+	cycles = 10;
 }
 
 inline uint8_t peek_byte(CPU& c)
