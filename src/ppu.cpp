@@ -148,9 +148,6 @@ void PPU::RegisterWrite(uint16_t addr, uint8_t val)
 			temp_addr &= 0xFF00;
 			temp_addr |= val;
 			data_address = temp_addr;
-			//temp_addr = 0;
-			//std::cout << "REG Y: " << ((data_address & 0x03E0) >> 5) << " " << ((data_address & 0x7000) >> 12) << " SCANLINE: " << scanline << std::endl;
-
 		}
 
 		break;
@@ -259,7 +256,6 @@ inline void increment_horizontal(PPU& p)
 	else {
 		p.data_address += 1;				// increment coarse X
 	}
-	//std::cout << "IH: Y: " << ((p.data_address & 0x03E0) >> 5) << " " << ((p.data_address & 0x7000) >> 12) << " SCANLINE: " << p.scanline << std::endl;
 }
 inline void increment_vertical(PPU& p)
 {
@@ -285,15 +281,12 @@ inline void increment_vertical(PPU& p)
 		}
 		p.data_address = (p.data_address & ~(0x03E0)) | (y << 5);
 	}
-
-	//std::cout << "IV Y: " << ((p.data_address & 0x03E0) >> 5) << " " << ((p.data_address & 0x7000) >> 12) << " SCANLINE: " << p.scanline << std::endl;
 }
 inline uint8_t read_nametable_tile(PPU& p)
 {
 	int coarse_x = p.data_address & 0x001F;
 	int coarse_y = (p.data_address & 0x03E0) >> 5;
 	int nametable = (p.data_address & 0xC00) >> 10;
-	//std::cout << "X: " << coarse_x << ", Y: " << coarse_y << ", NT: " << nametable << std::endl;
 
 	return p.ppubus.read_byte(0x2000 | (p.data_address & 0x0FFF));
 }
@@ -346,21 +339,19 @@ inline uint8_t fetch_sprite_pattern_table(const PPU& p, const ObjectSprite& spri
 		address |= sprite.tile_num << 4;
 		address |= p.sprite_pattern_table << 12;
 
-		//assert(y_offset <= 7);
-
 		if (sprite.attribute & (1 << 7)) {	// Flip vertically
 			y_offset = 7 - y_offset;
 		}
-		//assert(y_offset<= 7);
+
 		address |= (y_offset);
 	}
 	else {
-
+		bool flip_y = sprite.attribute & (1 << 7);
 		address |= upper_bit_plane << 3;
 		address |= (sprite.tile_num & 1) << 12;		// Tall sprites select table with low bit
-		address |= ((sprite.tile_num & 0xFE) + (y_offset > 7)) << 4;
+		address |= ((sprite.tile_num & 0xFE) + ((y_offset > 7 && !flip_y)||(y_offset <= 7 && flip_y))) << 4;
 
-		if (sprite.attribute & (1 << 7)) {	// Flip vertically
+		if (flip_y) {	// Flip vertically
 			y_offset = 15 - y_offset;
 		}
 		address |= (y_offset%8);
@@ -456,21 +447,17 @@ void PPU::clock()
 				palette_bgrd[0] = 0xFF;
 			}
 			if (palette & 1) {
-				palette_bgrd[0] = 0xFF;
+				palette_bgrd[1] = 0xFF;
 			}
 			increment_horizontal(*this);
 
 			fetch_and_append_tile_shifters(*this);
 
-			//std::cout << "Y: " << ((data_address & 0x03E0) >> 5) << " " << scanline << std::endl;
-
-			//std::cout << "YFINE: " << ((data_address & 0x7000) >> 12) << std::endl;
+			num_sprites_scanline = 0;	// Fix for annoying sprite wraparounds from scanline 239 onto scanline 0
 
 			cycle = -1;
 			++scanline;
 			render_state = VISIBLE;
-
-			//increment_vertical(*this);
 		}
 		break;
 	case VISIBLE:
@@ -488,9 +475,6 @@ void PPU::clock()
 				bgrd_color |= ((palette_bgrd[0] >> (7 - fine_x_scroll)) & 1) << 3;
 				bgrd_color |= ((palette_bgrd[1] >> (7 - fine_x_scroll)) & 1) << 2;
 			}
-				//color |= (1 << 4);
-				//uint8_t idx = ppubus.read_byte(0x3F00 + bgrd_color);
-
 
 			uint8_t sprite_color = 0;
 			bool is_sprite_0 = false;
@@ -541,7 +525,6 @@ void PPU::clock()
 				if (is_sprite_0) {
 					sprite0_hit = true;
 				}
-				// ADD SPRITE 0 FUNCTION LATER!!!!!
 			}
 
 			sf::Uint32 pixel_color = colors[color_index];

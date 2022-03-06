@@ -71,9 +71,6 @@ void Emulator::step()
 			<< " SL: " << ppu.scanline << " P CYC " << ppu.cycle 
 			<< " DTAADR: " << std::hex << +ppu.data_address
 			<< " TEMPADR: " << std::hex << +ppu.temp_addr << std::endl;
-		if (cpu.total_cycles == 57460) {
-			printf("");
-		}
 
 		cpu.step();
 

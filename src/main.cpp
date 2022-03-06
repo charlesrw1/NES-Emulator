@@ -220,30 +220,20 @@ int compare_mesen_log()
 		counter++;
 	}
 }
-
+ 
 int main()
 {
 	Log::log_level = Info;
 	std::ofstream log_file("log_dump.txt");
 	Log::set_stream(&std::cout);
 
-	//sf::Sound sound;
-
-//	APU apu;
-//	apu.test();
-//	return 0;
-
-
-
 	sf::RenderWindow window(sf::VideoMode(256*4, 240*4), "NES-EMULATOR");
 	window.setFramerateLimit(60);
 	window.setView(sf::View(sf::FloatRect(0, 0, 256, 240)));
 	Emulator app(window);
-	app.load_cartridge("loz.nes");
-// TETRIS DOESNT WORK BECAUSE IT ACTUALLY MIRRORS ALL 4 TABLES TO 0x2c00 IN GAME!!!!
-	app.cpu.reset();
+	app.load_cartridge("donkey_kong.nes");
 
-	//return run_nestest(app);
+	app.cpu.reset();
 
 	uint64_t cycles=0;
 	VideoScreen vs(window);

@@ -73,6 +73,7 @@ void MainRAM::write_byte(uint16_t addr, uint8_t val)
 		if (addr == 0x4016) {
 			if (val == 0) {
 				controller_port_1 = cached_controller_port1;
+
 			}
 		}
 	}

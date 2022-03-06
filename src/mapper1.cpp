@@ -19,8 +19,6 @@ void Mapper1::write_control(uint8_t val)
 	case 3:
 		ppu_ram.cart.mirroring = Cartridge::HORIZONTAL;
 		break;
-	default:
-		LOG(Warning) << "Unsupported mirroring\n";
 	}
 	ppu_ram.update_mirroring();
 
