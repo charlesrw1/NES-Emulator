@@ -1,7 +1,7 @@
 #include "emulator.h"
 void Emulator::load_cartridge(std::string file)
 {
-	cart.load_from_file(file);
+	cart.load_from_file(file, ppu_ram);
 	ppu_ram.update_mirroring();
 }
 uint8_t cpu_status(CPU& c)
@@ -52,14 +52,12 @@ void Emulator::step()
 			// Actually this could be either 513/514, maybe a problem
 			ppu.cycle += 513;
 		}
-
-		if (ppu.generate_NMI && ppu.send_nmi_output) {
-			LOG(CPU_Info) << "NMI ENTERED" << std::endl;
-			ppu.send_nmi_output = false;
-			in_nmi = true;
-			cpu.nmi();
-		}
-		else if (ppu.send_nmi_output) {
+		if (ppu.send_nmi_output) {
+			if (ppu.generate_NMI) {
+				LOG(CPU_Info) << "NMI ENTERED" << std::endl;
+				in_nmi = true;
+				cpu.nmi();
+			}
 			ppu.send_nmi_output = false;
 		}
 
@@ -71,8 +69,11 @@ void Emulator::step()
 			<< " P:" << +cpu_status(cpu)
 			<< " C CYC:" << std::dec << cpu.total_cycles
 			<< " SL: " << ppu.scanline << " P CYC " << ppu.cycle 
-			<< " DTAADR: " << std::hex << +ppu.data_address << std::endl;
-
+			<< " DTAADR: " << std::hex << +ppu.data_address
+			<< " TEMPADR: " << std::hex << +ppu.temp_addr << std::endl;
+		if (cpu.total_cycles == 57460) {
+			printf("");
+		}
 
 		cpu.step();
 

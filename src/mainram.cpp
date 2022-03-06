@@ -4,6 +4,7 @@
 #include "ppu.h"
 
 #include <bitset>
+#include <SFML/Graphics.hpp>
 
 
 const int scanlines_pf = 262;
@@ -23,20 +24,10 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 {
 	// 2KB zero page, stack, and ram mirrored to 0x2000
 	if (addr < 0x2000) {
-		if (addr == 0x0) {
-			LOG(Debug) << "TEMP JOYPAD BITS READ: " << std::bitset<8>(memory[addr & 0x07FF]) << std::endl;
-		}
-		if (addr == 0x06fc) {
-			LOG(Debug) << "JOYPAD BITS READ: " << std::bitset<8>(memory[addr & 0x07FF]) << std::endl;
-		}
-
 		if (addr == 0x06fd) {
 			// Hail Mary, full of grace, the lord is with you. Bless art thou amoungst women and blessed is the fruit of thy womb Jesus christ.
 			// Holy Mary, mother of god, pray for us sinners, now and at the hour of our death. Amen.
 			return 0;
-		}
-		if (addr == 0x074a) {
-			LOG(Debug) << "JOYPAD BIT MASK READ: " << std::bitset<8>(memory[addr & 0x07FF]) << std::endl;
 		}
 		return memory[addr & 0x07FF];
 	}
@@ -54,24 +45,16 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 			return res;
 		}
 	}
+	else if (addr >= 0x6000 && addr <= 0x7FFF) {
+		return cart.read_extended_ram(addr);
+	}
 	else {
 		return cart.mapper->read_prg(addr);
 	}
 }
-				const sf::Keyboard::Key input_keys[8] = { sf::Keyboard::A,sf::Keyboard::S,sf::Keyboard::Q,sf::Keyboard::W,
-		sf::Keyboard::Up, sf::Keyboard::Down, sf::Keyboard::Left, sf::Keyboard::Right };
 void MainRAM::write_byte(uint16_t addr, uint8_t val)
 {
 	if (addr < 0x2000) {
-		if (addr == 0x0) {
-			LOG(Debug) << "TEMP JOYPAD BITS SAVED: " << std::bitset<8>(val) << std::endl;
-		}
-		if (addr == 0x06fc) {
-			LOG(Debug) << "JOYPAD BITS SAVED " << std::bitset<8>(val) << std::endl;
-		}
-		if (addr == 0x074a) {
-			LOG(Debug) << "JOYPAD BIT MASK SAVED " << std::bitset<8>(val) << std::endl;
-		}
 		memory[addr & 0x07FF] = val;
 	}
 	else if (addr < 0x4000) {
@@ -92,6 +75,9 @@ void MainRAM::write_byte(uint16_t addr, uint8_t val)
 				controller_port_1 = cached_controller_port1;
 			}
 		}
+	}
+	else if (addr >= 0x6000 && addr <= 0x7FFF) {
+		cart.write_extended_ram(addr, val);
 	}
 	else {
 		cart.mapper->write_prg(addr, val);

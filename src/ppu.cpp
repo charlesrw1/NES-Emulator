@@ -83,7 +83,7 @@ uint8_t PPU::RegisterRead(uint16_t addr)
 }
 void PPU::RegisterWrite(uint16_t addr, uint8_t val)
 {
-	//LOG(PPU_Info) << "PPU Register Write: " << std::hex << +addr << std::dec << std::endl;
+	//LOG(PPU_Info) << "PPU Register Write: " << std::hex << +addr << ", " <<  std::dec << std::endl;
 	switch (addr)
 	{
 	case 0x2000:
@@ -340,18 +340,31 @@ inline uint8_t fetch_pattern_table(PPU& p, uint8_t location, bool upper_bit_plan
 inline uint8_t fetch_sprite_pattern_table(const PPU& p, const ObjectSprite& sprite, bool upper_bit_plane)
 {
 	uint16_t address = 0;
-	address |= upper_bit_plane << 3;
-	address |= sprite.tile_num << 4;
-	address |= p.sprite_pattern_table << 12;
-	
 	uint8_t y_offset = p.scanline - sprite.y_coord;
-	assert(y_offset <= 7);
+	if (!p.tall_sprites) {
+		address |= upper_bit_plane << 3;
+		address |= sprite.tile_num << 4;
+		address |= p.sprite_pattern_table << 12;
 
-	if (sprite.attribute & (1 << 7)) {	// Flip vertically
-		y_offset = 7 - y_offset;
+		//assert(y_offset <= 7);
+
+		if (sprite.attribute & (1 << 7)) {	// Flip vertically
+			y_offset = 7 - y_offset;
+		}
+		//assert(y_offset<= 7);
+		address |= (y_offset);
 	}
-	assert(y_offset<= 7);
-	address |= (y_offset);
+	else {
+
+		address |= upper_bit_plane << 3;
+		address |= (sprite.tile_num & 1) << 12;		// Tall sprites select table with low bit
+		address |= ((sprite.tile_num & 0xFE) + (y_offset > 7)) << 4;
+
+		if (sprite.attribute & (1 << 7)) {	// Flip vertically
+			y_offset = 15 - y_offset;
+		}
+		address |= (y_offset%8);
+	}
 
 	uint8_t pattern = p.ppubus.read_byte(address);
 	if (sprite.attribute & (1 << 6)) {	// Flip horizontally
@@ -475,7 +488,6 @@ void PPU::clock()
 				bgrd_color |= ((palette_bgrd[0] >> (7 - fine_x_scroll)) & 1) << 3;
 				bgrd_color |= ((palette_bgrd[1] >> (7 - fine_x_scroll)) & 1) << 2;
 			}
-
 				//color |= (1 << 4);
 				//uint8_t idx = ppubus.read_byte(0x3F00 + bgrd_color);
 

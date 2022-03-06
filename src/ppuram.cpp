@@ -83,5 +83,11 @@ void PPURAM::update_mirroring()
 		nametable_3 = 0x0400;
 		nametable_4 = 0x0400;
 		break;
+	case Cartridge::ONESCREENLOW:
+		nametable_1 = nametable_2 = nametable_3 = nametable_4 = 0x0400;
+		break;
+	case Cartridge::ONESCREENHIGH:
+		nametable_1 = nametable_2 = nametable_3 = nametable_4 = 0x0;
+		break;
 	}
 }

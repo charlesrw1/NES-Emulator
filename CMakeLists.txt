@@ -15,7 +15,7 @@ include_directories("${PROJECT_SOURCE_DIR}/src/")
 add_executable (NES-Emulator ${SOURCES})
 
 find_package(SFML 2.5 COMPONENTS system window graphics network audio REQUIRED)
-target_link_libraries(NES-Emulator PRIVATE sfml-system sfml-network sfml-graphics sfml-window)
+target_link_libraries(NES-Emulator PRIVATE sfml-system sfml-network sfml-graphics sfml-window sfml-audio)
 
 #file(GLOB MY_FILES "${CMAKE_CURRENT_SOURCE_DIR}/rom/*.nes") 
 #file(COPY ${MY_FILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

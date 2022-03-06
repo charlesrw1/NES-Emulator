@@ -9,7 +9,6 @@
 #include "cartridge.h"
 #include "video_screen.h"
 #include "SFML/Graphics.hpp"
-#include "controller.h"
 
 // Class structure:
 // 

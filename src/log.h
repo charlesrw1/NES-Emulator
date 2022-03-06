@@ -25,7 +25,9 @@ const char* const log_strings_no_color[] = {
 #ifdef COLOR_LOG
 #define LOG(level) \
 if (level < Log::log_level) ; \
-else Log::get_stream() << '[' << __FILENAME__ << ":" << std::dec << __LINE__ << "] "<< log_strings[level]
+else Log::get_stream() << log_strings[level]
+//else Log::get_stream() << '[' << __FILENAME__ << ":" << std::dec << __LINE__ << "] "<< log_strings[level]
+
 #else
 #define LOG(level) \
 if (level < Log::log_level) ; \

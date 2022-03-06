@@ -10,6 +10,8 @@
 #include "emulator.h"
 #include "video_screen.h"
 
+#include "apu.h"
+
 std::ostream* Log::stream;
 Level Log::log_level;
 
@@ -106,6 +108,7 @@ void assert_log_and_cpu(CPU& c, std::string& log_line)
 
 int run_nestest(Emulator& app)
 {
+
 	app.load_cartridge("nestest.nes");
 	app.cpu.pc = 0xC000;
 
@@ -137,7 +140,7 @@ sf::FloatRect calcView(const sf::Vector2f& windowSize, float pacRatio)
 	float ratio = viewSize.x / viewSize.y;
 
 	// too high
-	if (ratio < pacRatio) {
+	if (ratio < pacRatio) { 
 		viewSize.y = viewSize.x / pacRatio;
 		float vp_h = viewSize.y / windowSize.y;
 		viewport.height = vp_h;
@@ -163,19 +166,81 @@ void OnResize(sf::RenderWindow& window, sf::Event& event)
 }
 
 
+#include "SFML/Audio.hpp"
+
+void compare(const std::string& my, const std::string& mesen)
+{
+	std::stringstream ss;
+	std::string temp,temp1;
+	temp = my.substr(5, 4);
+	for (int i = 0; i < 4; i++) {
+		temp.at(i) = toupper(temp.at(i));
+	}
+	ss << mesen;
+	ss >> temp1;
+	assert(temp == temp1);
+	uint64_t my_cycles = 0;
+	uint64_t his_cycles = 0;
+
+	int pos = my.find("C CYC:");
+	temp = my.substr(pos + 6);
+	ss.str("");
+	ss << temp;
+	ss >> my_cycles;
+	pos = mesen.find("CPU Cycle:");
+	temp1 = mesen.substr(pos + 10);
+	ss.str("");
+
+	ss << temp1;
+	ss >> his_cycles;
+	std::cout << my_cycles << " " << his_cycles << "\n";
+	assert(my_cycles == his_cycles);
+
+}
+
+int compare_mesen_log()
+{
+	std::ifstream my_log("log_dump.txt");
+	if (!my_log)
+		return 1;
+	std::ifstream mesen_log("mesen_loz.txt");
+	if (!mesen_log)
+		return 1;
+
+	std::string my_line, mesen_line;
+	for (int i = 0; i < 7; i++) {
+		getline(my_log, my_line);
+	}
+	unsigned int counter = 7;
+	while (1)
+	{
+		getline(my_log, my_line);
+		getline(mesen_log, mesen_line);
+		compare(my_line, mesen_line);
+		counter++;
+	}
+}
 
 int main()
 {
-	Log::log_level = Error;
+	Log::log_level = Info;
 	std::ofstream log_file("log_dump.txt");
-	Log::set_stream(&log_file);
+	Log::set_stream(&std::cout);
+
+	//sf::Sound sound;
+
+//	APU apu;
+//	apu.test();
+//	return 0;
+
+
 
 	sf::RenderWindow window(sf::VideoMode(256*4, 240*4), "NES-EMULATOR");
 	window.setFramerateLimit(60);
 	window.setView(sf::View(sf::FloatRect(0, 0, 256, 240)));
 	Emulator app(window);
-	app.load_cartridge("pacman.nes");
-
+	app.load_cartridge("loz.nes");
+// TETRIS DOESNT WORK BECAUSE IT ACTUALLY MIRRORS ALL 4 TABLES TO 0x2c00 IN GAME!!!!
 	app.cpu.reset();
 
 	//return run_nestest(app);

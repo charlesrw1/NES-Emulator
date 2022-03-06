@@ -1,6 +1,9 @@
 #include "mapper.h"
 #include "cartridge.h"
 #include "log.h"
+
+
+// NROM
 struct Mapper0 : public Mapper
 {
 	Mapper0(Cartridge& cart) : Mapper(cart)

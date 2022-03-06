@@ -2,8 +2,9 @@
 #include <fstream>
 #include "log.h"
 #include "mapper0.h"
+#include "mapper1.h"
 
-bool Cartridge::load_from_file(std::string file)
+bool Cartridge::load_from_file(std::string file, PPURAM& ppu_ram)
 {
 	std::ifstream rom(file, std::ios::binary);
 	LOG(Info) << "Loading rom file: " << file << std::endl;
@@ -35,14 +36,16 @@ bool Cartridge::load_from_file(std::string file)
 	mirroring = (header[6] & 0x1) ? VERTICAL : HORIZONTAL;
 	LOG(Info) << "Mirroring: " << ((mirroring) ? "VERTICAL" : "HORIZONTAL" ) << std::endl;
 
-	mapper_num = ((header[6] & 0xf) >> 4 | header[7] & 0xf0);
+	mapper_num = (((header[6] & 0xf0)>>4) | (header[7] & 0xf));
 	LOG(Info) << "Mapper #: " << std::hex << +mapper_num << std::endl;
 
 	switch (mapper_num)
 	{
 	case 0: mapper = new Mapper0(*this); break;
+	case 1: mapper = new Mapper1(*this, ppu_ram); break;
 	default:
 		LOG(Error) << "Mapper # is unsupported\n";
+		return false;
 		break;
 	}
 
