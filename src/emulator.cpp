@@ -1,8 +1,11 @@
 #include "emulator.h"
-void Emulator::load_cartridge(std::string file)
+bool Emulator::load_cartridge(std::string file)
 {
-	cart.load_from_file(file, ppu_ram);
+	if (!cart.load_from_file(file, ppu_ram)) {
+		return false;
+	}
 	ppu_ram.update_mirroring();
+	return true;
 }
 uint8_t cpu_status(CPU& c)
 {
@@ -60,6 +63,10 @@ void Emulator::step()
 			}
 			ppu.send_nmi_output = false;
 		}
+		if (cart.mapper->generate_IRQ) {
+			cpu.irq();
+			cart.mapper->generate_IRQ = false;
+		}
 
 		LOG(CPU_Info) << "     " << std::hex << +(cpu.pc)
 			<< " $" << +main_ram.read_byte(cpu.pc)
@@ -70,7 +77,7 @@ void Emulator::step()
 			<< " C CYC:" << std::dec << cpu.total_cycles
 			<< " SL: " << ppu.scanline << " P CYC " << ppu.cycle 
 			<< " DTAADR: " << std::hex << +ppu.data_address
-			<< " TEMPADR: " << std::hex << +ppu.temp_addr << std::endl;
+			<< " TEMPADR: " << std::hex << +ppu.temp_addr << '\n';
 
 		cpu.step();
 

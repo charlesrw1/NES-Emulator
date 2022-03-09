@@ -220,23 +220,26 @@ int compare_mesen_log()
 		counter++;
 	}
 }
- 
 int main()
 {
 	Log::log_level = Info;
 	std::ofstream log_file("log_dump.txt");
 	Log::set_stream(&std::cout);
 
-	sf::RenderWindow window(sf::VideoMode(256*4, 240*4), "NES-EMULATOR");
+	sf::RenderWindow window(sf::VideoMode(256*3, 240*3), "NES-EMULATOR");
 	window.setFramerateLimit(60);
 	window.setView(sf::View(sf::FloatRect(0, 0, 256, 240)));
 	Emulator app(window);
-	app.load_cartridge("donkey_kong.nes");
+	if (!app.load_cartridge("rcr.nes")) {
+		return 1;
+	}
 
 	app.cpu.reset();
 
 	uint64_t cycles=0;
 	VideoScreen vs(window);
+	sf::Clock clock;
+	sf::Time elapsed;
 	while (window.isOpen()) 
 	{
 		sf::Event event;
@@ -248,6 +251,12 @@ int main()
 			case sf::Event::KeyPressed:
 				switch (event.key.code)
 				{
+				case sf::Keyboard::Key::F1:
+					app.cpu.reset();
+					break;
+				case sf::Keyboard::Key::F2:
+					Log::log_level = CPU_Info;
+					break;
 				}
 				break;
 			case sf::Event::Resized:
@@ -258,6 +267,10 @@ int main()
 			}
 		}
 		app.step();
+		elapsed = clock.restart();
+		int ms = elapsed.asMilliseconds();
+		if (elapsed.asMilliseconds() < 16)
+			sf::sleep(sf::milliseconds(16) - elapsed);
 
 	}
 	

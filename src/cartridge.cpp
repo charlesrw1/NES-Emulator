@@ -3,6 +3,7 @@
 #include "log.h"
 #include "mapper0.h"
 #include "mapper1.h"
+#include "mapper4.h"
 
 bool Cartridge::load_from_file(std::string file, PPURAM& ppu_ram)
 {
@@ -43,6 +44,7 @@ bool Cartridge::load_from_file(std::string file, PPURAM& ppu_ram)
 	{
 	case 0: mapper = new Mapper0(*this); break;
 	case 1: mapper = new Mapper1(*this, ppu_ram); break;
+	case 4: mapper = new Mapper4(*this, ppu_ram); break;
 	default:
 		LOG(Error) << "Mapper # is unsupported\n";
 		return false;

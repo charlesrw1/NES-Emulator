@@ -1,6 +1,8 @@
 #include "ppu.h"
 #include "ppuram.h"
 #include "video_screen.h"
+#include "mapper.h"
+#include "cartridge.h"
 
 #include <cassert>
 
@@ -35,6 +37,8 @@ PPU::PPU(PPURAM& ppu_ram, VideoScreen& screen) : ppubus(ppu_ram), screen(screen)
 	temp_addr = 0;
 
 	memset(OAM, 0xFF, sizeof(ObjectSprite) * 64);
+	memset(scanline_sprite_indices, 0, sizeof(scanline_sprite_indices));
+	num_sprites_scanline = 0;
 
 	cycle = 0;
 	scanline = 0;
@@ -539,6 +543,7 @@ void PPU::clock()
 		}
 		if (cycle == 257) {
 			copy_horizontal_bits(*this);
+
 		}
 		// load sprites for next scanline, real hardware does this during regular rendering
 		// simpler to just do it at end of scanline
@@ -561,6 +566,9 @@ void PPU::clock()
 
 				num_sprites_scanline++;
 			}
+			ppubus.cart.mapper->scanline(); // So MMC3 mapper (4), can decrement/call IRQ
+
+
 		// Load next 2 tiles into shifters
 			patterntable_bgrd[0] = 0;
 			patterntable_bgrd[1] = 0;
@@ -586,6 +594,7 @@ void PPU::clock()
 			increment_horizontal(*this);
 
 			fetch_and_append_tile_shifters(*this);
+
 
 			++scanline;
 			cycle = -1;

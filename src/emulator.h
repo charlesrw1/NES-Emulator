@@ -34,7 +34,7 @@ public:
 	VideoScreen screen;
 	sf::RenderWindow& window;
 
-	void load_cartridge(std::string file);
+	bool load_cartridge(std::string file);
 
 	void step();
 };
