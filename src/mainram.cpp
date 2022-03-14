@@ -24,11 +24,6 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 {
 	// 2KB zero page, stack, and ram mirrored to 0x2000
 	if (addr < 0x2000) {
-		if (addr == 0x06fd) {
-			// Hail Mary, full of grace, the lord is with you. Bless art thou amoungst women and blessed is the fruit of thy womb Jesus christ.
-			// Holy Mary, mother of god, pray for us sinners, now and at the hour of our death. Amen.
-			return 0;
-		}
 		return memory[addr & 0x07FF];
 	}
 	// 8 PPU registers mirrored for 2KB
@@ -43,6 +38,11 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 			controller_port_1 >>= 1;
 	
 			return res;
+		}
+		if (addr == 0x4017) {
+			LOG(Debug) << "INPUT READ " << std::bitset<8>(controller_port_1) << std::endl;
+
+			return 0;
 		}
 	}
 	else if (addr >= 0x6000 && addr <= 0x7FFF) {

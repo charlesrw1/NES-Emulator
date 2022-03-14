@@ -7,12 +7,15 @@
 
 bool Cartridge::load_from_file(std::string file, PPURAM& ppu_ram)
 {
-	std::ifstream rom(file, std::ios::binary);
+	std::ifstream rom("../../../roms/" + file, std::ios::binary);
 	LOG(Info) << "Loading rom file: " << file << std::endl;
 	if (!rom) {
 		LOG(Error) << "Couldn't load rom: " << file << std::endl;
 		return false;
 	}
+	int pos = file.rfind('.');
+	rom_name = file.substr(0, pos);
+
 	std::vector<uint8_t> header(0x10);
 	rom.read((char*)header.data(), 0x10);
 	std::string nes_name(&header[0], &header[4]);
@@ -37,8 +40,24 @@ bool Cartridge::load_from_file(std::string file, PPURAM& ppu_ram)
 	mirroring = (header[6] & 0x1) ? VERTICAL : HORIZONTAL;
 	LOG(Info) << "Mirroring: " << ((mirroring) ? "VERTICAL" : "HORIZONTAL" ) << std::endl;
 
+	battery_ram = (header[6] & 0x2);
+	if (battery_ram) {
+		LOG(Info) << "Using battery-backed PRG RAM" << std::endl;
+		extended_ram.resize(0x2000);
+		std::ifstream save_file("../../../saves/"+rom_name + ".sav");
+		if (!save_file) {
+			LOG(Info) << ".sav file not found, creating new save file" << std::endl;
+		}
+		else {
+			LOG(Info) << ".sav file found" << std::endl;
+			save_file.read((char*)extended_ram.data(), 0x2000);
+		}
+	}
+
+
 	mapper_num = (((header[6] & 0xf0)>>4) | (header[7] & 0xf));
 	LOG(Info) << "Mapper #: " << std::hex << +mapper_num << std::endl;
+
 
 	switch (mapper_num)
 	{

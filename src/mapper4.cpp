@@ -36,7 +36,6 @@ void Mapper4::write_prg(uint16_t addr, uint8_t val)
 	else if (addr <= 0xFFFF) {
 		if (even) {		// IRQ disable
 			irq_enable = false;
-
 		}
 		else {			// IRQ enable
 			irq_enable = true;
