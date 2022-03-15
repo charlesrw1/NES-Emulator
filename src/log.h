@@ -53,6 +53,11 @@ public:
 		return *stream;
 	}
 	static Level log_level;
+
+	// Global variables to control emulator dumping out log info, makes it 
+	// easy so all classes can trigger it
+	static bool log_status_dump;
+	static int log_next_cycles;
 private:
 	static std::ostream* stream;
 };

@@ -81,6 +81,8 @@ uint8_t PPU::RegisterRead(uint16_t addr)
 		break;
 	default:
 		LOG(Error) << "Read attempt @ write only register: " << std::hex << +addr << std::endl;
+		Log::log_status_dump = true;
+		Log::log_next_cycles = 20;
 		break;
 	}
 	return res;
@@ -163,6 +165,8 @@ void PPU::RegisterWrite(uint16_t addr, uint8_t val)
 	}
 	default:
 		LOG(Error) << "Write attempt @ read only register: " << std::hex << +addr << std::endl;
+		Log::log_status_dump = true;
+		Log::log_next_cycles = 20;
 	}
 
 }

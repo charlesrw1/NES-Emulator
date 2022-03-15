@@ -21,6 +21,8 @@ public:
 		prg_ptrs[1] = 0x2000;
 		prg_ptrs[2] = (cart.prg_banks * 2 - 2) * 0x2000;
 		prg_ptrs[3] = (cart.prg_banks * 2 - 1) * 0x2000;
+
+		cart.extended_ram.resize(0x2000);
 	}
 
 	uint8_t read_prg(uint16_t addr) override

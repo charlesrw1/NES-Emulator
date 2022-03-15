@@ -40,10 +40,6 @@ struct CPU
 	bool opcode_extra_cycle : 1;
 
 
-	int log_next_cycles = 0;
-	// signals to emulator class to dump the logged cpu info in the ring_buffer
-	bool dump_log = false;
-
 	MainRAM& mem;
 
 	void step();

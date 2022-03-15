@@ -14,6 +14,8 @@
 
 std::ostream* Log::stream;
 Level Log::log_level;
+int Log::log_next_cycles = 0;
+bool Log::log_status_dump = false;;
 
 using namespace std;
 
@@ -255,8 +257,12 @@ int main()
 				case sf::Keyboard::Key::F1:
 					app.cpu.reset();
 					break;
-				case sf::Keyboard::Key::F2:
-					Log::log_level = CPU_Info;
+				case sf::Keyboard::Key::F2:		// this dumps out the last 20 cpu/ppu/general info plus the next 20 
+					Log::log_next_cycles = 20;
+					Log::log_status_dump = true;
+					break;
+				case sf::Keyboard::Key::F3:		// hide warnings/info
+					Log::log_level = Error;
 					break;
 				}
 				break;

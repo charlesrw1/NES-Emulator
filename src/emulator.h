@@ -22,8 +22,8 @@ struct EmulatorStatus
 	uint64_t total_cycles;
 
 	uint32_t rom_addr;
-	uint16_t scanline;
-	uint16_t ppu_cycle;
+	int16_t scanline;
+	int16_t ppu_cycle;
 
 	uint16_t ppu_addr;
 	uint16_t ppu_temp_addr;

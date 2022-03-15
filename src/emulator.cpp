@@ -72,24 +72,26 @@ void Emulator::step()
 			cart.mapper->generate_IRQ = false;
 		}
 		
-//>Logging
 		ring_buffer.at(ring_buffer_index).save_state(*this);
+		cpu.step();
+//>Logging
 		if(ring_buffer_elements < ring_buffer.size())
 			ring_buffer_elements += 1;
 
-		if (cpu.dump_log) {
+		if (Log::log_status_dump) {
+			Log::get_stream() << " << START LOG DUMP\n";
 			for (int i = 0; i < ring_buffer_elements; i++) {
 				ring_buffer.at((ring_buffer_index + 1 + i) % ring_buffer.size()).print(Log::get_stream());
 			}
 			ring_buffer_elements = 0;
-			cpu.dump_log = false;
+			Log::log_status_dump = false;
 			Log::get_stream() << "END LOG DUMP >> START CURRENT\n";
 		}
 
 		Level state = Log::log_level;
-		if (cpu.log_next_cycles > 0) {
+		if (Log::log_next_cycles > 0) {
 			Log::log_level = CPU_Info;
-			cpu.log_next_cycles--;
+			Log::log_next_cycles--;
 		}
 		if (CPU_Info >= Log::log_level) {
 			ring_buffer.at(ring_buffer_index).print(Log::get_stream());
@@ -98,7 +100,6 @@ void Emulator::step()
 		ring_buffer_index = (ring_buffer_index + 1) % ring_buffer.size();
 //<Logging
 
-		cpu.step();
 
 
 		total_cycles += cpu.cycles;
@@ -128,17 +129,18 @@ void EmulatorStatus::save_state(Emulator& e)
 	ppu_cycle = e.ppu.cycle;
 	opcode = e.main_ram.read_byte(e.cpu.pc);
 }
+#include <iomanip>
 void EmulatorStatus::print(std::ostream& stream)
 {
-	stream << std::hex << +(pc)
-		<< " $" << +opcode
-		<< " A: " << +ar
-		<< " X: " << +xr
-		<< " Y: " << +yr
-		<< " S: " << ((nf) ? 'N' : '-') << ((vf) ? 'V' : '-') << ((inf) ? 'I' : '-') << ((zf) ? 'Z' : '-') << ((cf) ? 'C' : '-');
-		stream << " C CYC:" << std::dec << total_cycles
-		<< " SL: " << scanline << " P CYC " << ppu_cycle
-		<< " DTAADR: " << std::hex << +ppu_addr
-		<< " TEMPADR: " << std::hex << +ppu_temp_addr
-		<< " PRG ADR: " << rom_addr << '\n';
+	stream << std::hex << std::setw(4) << +(pc)
+		<< " $" << std::setw(2) << +opcode
+		<< " A:" << std::setw(2) << +ar
+		<< " X:" << std::setw(2) << +xr
+		<< " Y:" << std::setw(2) << +yr
+		<< " S:" << ((nf) ? 'N' : '-') << ((vf) ? 'V' : '-') << ((inf) ? 'I' : '-') << ((zf) ? 'Z' : '-') << ((cf) ? 'C' : '-');
+	stream << " SL:" << std::dec << std::setw(3) << scanline << " P-CYC " << std::setw(3) << ppu_cycle
+		<< " DTAADR:" << std::hex << std::setw(4) << +ppu_addr
+		<< " TEMPADR:" << std::hex << std::setw(4) << +ppu_temp_addr
+		<< " PRG-ADR:" << std::setw(6) << rom_addr
+		<< " C-CYC:" << std::dec << total_cycles << '\n';
 }

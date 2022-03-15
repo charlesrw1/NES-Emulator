@@ -681,9 +681,8 @@ void execute_opcode(CPU& c, uint8_t opcode)
 	} break;									// ROR abs, x
 
 	default:
-		LOG(Error) << "Unknown Opcode: " << +opcode << " PC: "  << std::hex << +(c.pc-1) << std::endl;
-		//throw std::runtime_error("UNKNOWN OPCODE");
-		c.dump_log = true;
-		c.log_next_cycles = 20;
+		LOG(Error) << "Unknown Opcode: " << std::hex << +opcode << " PC: " << +(c.pc-1) << std::endl;
+		Log::log_status_dump = true;
+		Log::log_next_cycles = 20;
 	}
  }
