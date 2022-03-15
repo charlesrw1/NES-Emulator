@@ -222,6 +222,7 @@ int compare_mesen_log()
 }
 int main()
 {
+
 	Log::log_level = Info;
 	std::ofstream log_file("bad_dump.txt");
 	Log::set_stream(&std::cout);
@@ -230,7 +231,7 @@ int main()
 	window.setFramerateLimit(60);
 	window.setView(sf::View(sf::FloatRect(0, 0, 256, 240)));
 	Emulator app(window);
-	if (!app.load_cartridge("smb3.nes")) {
+	if (!app.load_cartridge("loz.nes")) {
 		return 1;
 	}
 
@@ -272,6 +273,10 @@ int main()
 		if (elapsed.asMilliseconds() < 16)
 			sf::sleep(sf::milliseconds(16) - elapsed);
 
+	}
+	if (app.cart.battery_ram) {
+		std::ofstream save_file("../../../saves/" + app.cart.rom_name + ".sav");
+		save_file.write((char*)app.cart.extended_ram.data(), 0x2000);
 	}
 	
 	return 0;

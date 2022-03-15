@@ -39,6 +39,11 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 	
 			return res;
 		}
+		if (addr == 0x4017) {
+			LOG(Debug) << "INPUT READ " << std::bitset<8>(controller_port_1) << std::endl;
+
+			return 0;
+		}
 		else {
 			return 0;
 		}

@@ -20,7 +20,7 @@ struct VideoScreen
 		sf::Sprite s;
 		s.setTexture(image_texture);
 		s.scale(1.f, 1.f);
-		window.clear({ 0x90,0x90,0x90 });
+		window.clear();
 		window.draw(s);
 		window.display();
 	}

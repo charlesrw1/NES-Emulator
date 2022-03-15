@@ -39,8 +39,11 @@ struct Cartridge
 	std::vector<uint8_t> PRG_ROM;
 	std::vector<uint8_t> CHR_ROM;
 
+	bool battery_ram = false;
 	// $6000-$7FFF, optional
 	std::vector<uint8_t> extended_ram;
+
+	std::string rom_name;
 
 	uint8_t prg_banks;	// 16KB 
 	uint8_t chr_banks;	// 8KB
