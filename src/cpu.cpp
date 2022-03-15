@@ -33,7 +33,7 @@ void CPU::step()
 	opcode_extra_cycle = 0;
 
 	uint8_t opcode = next_byte(*this);
-	
+
 	execute_opcode(*this, opcode);
 
 	cycles += cpu_cycles[opcode];
@@ -681,7 +681,9 @@ void execute_opcode(CPU& c, uint8_t opcode)
 	} break;									// ROR abs, x
 
 	default:
-		LOG(Error) << "Unknown Opcode: " << +opcode << std::endl;
+		LOG(Error) << "Unknown Opcode: " << +opcode << " PC: "  << std::hex << +(c.pc-1) << std::endl;
 		//throw std::runtime_error("UNKNOWN OPCODE");
+		c.dump_log = true;
+		c.log_next_cycles = 20;
 	}
  }

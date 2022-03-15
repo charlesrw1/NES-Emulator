@@ -1,4 +1,8 @@
 #include "emulator.h"
+#include <sstream>
+
+//#define RING_BUFFER_LOGGING
+
 bool Emulator::load_cartridge(std::string file)
 {
 	if (!cart.load_from_file(file, ppu_ram)) {
@@ -67,17 +71,32 @@ void Emulator::step()
 			cpu.irq();
 			cart.mapper->generate_IRQ = false;
 		}
+		
+//>Logging
+		ring_buffer.at(ring_buffer_index).save_state(*this);
+		if(ring_buffer_elements < ring_buffer.size())
+			ring_buffer_elements += 1;
 
-		LOG(CPU_Info) << "     " << std::hex << +(cpu.pc)
-			<< " $" << +main_ram.read_byte(cpu.pc)
-			<< " A: " << +cpu.ar
-			<< " X: " << +cpu.xr
-			<< " Y: " << +cpu.yr
-			<< " P:" << +cpu_status(cpu)
-			<< " C CYC:" << std::dec << cpu.total_cycles
-			<< " SL: " << ppu.scanline << " P CYC " << ppu.cycle 
-			<< " DTAADR: " << std::hex << +ppu.data_address
-			<< " TEMPADR: " << std::hex << +ppu.temp_addr << '\n';
+		if (cpu.dump_log) {
+			for (int i = 0; i < ring_buffer_elements; i++) {
+				ring_buffer.at((ring_buffer_index + 1 + i) % ring_buffer.size()).print(Log::get_stream());
+			}
+			ring_buffer_elements = 0;
+			cpu.dump_log = false;
+			Log::get_stream() << "END LOG DUMP >> START CURRENT\n";
+		}
+
+		Level state = Log::log_level;
+		if (cpu.log_next_cycles > 0) {
+			Log::log_level = CPU_Info;
+			cpu.log_next_cycles--;
+		}
+		if (CPU_Info >= Log::log_level) {
+			ring_buffer.at(ring_buffer_index).print(Log::get_stream());
+		}
+		Log::log_level = state;
+		ring_buffer_index = (ring_buffer_index + 1) % ring_buffer.size();
+//<Logging
 
 		cpu.step();
 
@@ -87,4 +106,39 @@ void Emulator::step()
 			cycles_since_nmi += cpu.cycles;
 		}
 	}
+}
+void EmulatorStatus::save_state(Emulator& e)
+{
+	pc = e.cpu.pc;
+	sp = e.cpu.sp;
+	ar = e.cpu.ar;
+	xr = e.cpu.xr;
+	yr = e.cpu.yr;
+	nf = e.cpu.nf;
+	vf = e.cpu.vf;
+	df = e.cpu.df;
+	inf = e.cpu.inf;
+	zf = e.cpu.zf;
+	cf = e.cpu.cf;
+	total_cycles = e.cpu.total_cycles;
+	rom_addr = e.cart.mapper->get_prg_rom_address(e.cpu.pc);
+	ppu_addr = e.ppu.data_address;
+	ppu_temp_addr = e.ppu.temp_addr;
+	scanline = e.ppu.scanline;
+	ppu_cycle = e.ppu.cycle;
+	opcode = e.main_ram.read_byte(e.cpu.pc);
+}
+void EmulatorStatus::print(std::ostream& stream)
+{
+	stream << std::hex << +(pc)
+		<< " $" << +opcode
+		<< " A: " << +ar
+		<< " X: " << +xr
+		<< " Y: " << +yr
+		<< " S: " << ((nf) ? 'N' : '-') << ((vf) ? 'V' : '-') << ((inf) ? 'I' : '-') << ((zf) ? 'Z' : '-') << ((cf) ? 'C' : '-');
+		stream << " C CYC:" << std::dec << total_cycles
+		<< " SL: " << scanline << " P CYC " << ppu_cycle
+		<< " DTAADR: " << std::hex << +ppu_addr
+		<< " TEMPADR: " << std::hex << +ppu_temp_addr
+		<< " PRG ADR: " << rom_addr << '\n';
 }

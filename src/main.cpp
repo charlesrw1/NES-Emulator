@@ -223,14 +223,14 @@ int compare_mesen_log()
 int main()
 {
 	Log::log_level = Info;
-	std::ofstream log_file("log_dump.txt");
+	std::ofstream log_file("bad_dump.txt");
 	Log::set_stream(&std::cout);
 
 	sf::RenderWindow window(sf::VideoMode(256*3, 240*3), "NES-EMULATOR");
 	window.setFramerateLimit(60);
 	window.setView(sf::View(sf::FloatRect(0, 0, 256, 240)));
 	Emulator app(window);
-	if (!app.load_cartridge("rcr.nes")) {
+	if (!app.load_cartridge("smb3.nes")) {
 		return 1;
 	}
 

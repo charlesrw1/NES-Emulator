@@ -2,9 +2,11 @@
 #include "ppuram.h"
 #include "mainram.h"
 #include "cartridge.h"
+#include "log.h"
 
 void Mapper4::write_prg(uint16_t addr, uint8_t val)
 {
+	//LOG(Info) << "Write program\n";
 	bool even = ~addr & 1;
 	if (addr <= 0x9FFF) {
 		if (even) {		// Bank Select
@@ -67,6 +69,7 @@ void Mapper4::update_bank_vals(uint8_t val)
 }
 void Mapper4::update_pointers()
 {
+	//LOG(Info) << "Pointers updates\n";
 	if (chr_2kb_bank_back) {
 		chr_ptrs[0] = chr_1kb[0] * 0x0400;
 		chr_ptrs[1] = chr_1kb[1] * 0x0400;

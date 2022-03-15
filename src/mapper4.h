@@ -1,5 +1,6 @@
 #include "mapper.h"
 #include "cartridge.h"
+#include <cassert>
 struct PPURAM;
 class Mapper4 : public Mapper
 {
@@ -10,6 +11,11 @@ public:
 		memset(prg_ptrs, 0, sizeof(prg_ptrs));
 		memset(chr_ptrs, 0, sizeof(chr_ptrs));
 		memset(chr_2kb, 0, sizeof(chr_2kb));
+
+		memset(prg_8kb, 0, sizeof(prg_8kb));
+		memset(chr_1kb, 0, sizeof(chr_1kb));
+
+
 		irq_counter = 0;
 		irq_latch = 0;
 		prg_ptrs[0] = 0;
@@ -17,12 +23,18 @@ public:
 		prg_ptrs[2] = (cart.prg_banks * 2 - 2) * 0x2000;
 		prg_ptrs[3] = (cart.prg_banks * 2 - 1) * 0x2000;
 
-		cart.extended_ram.resize(0x2000);
+		//cart.extended_ram.resize(0x2000);
 	}
 
 	uint8_t read_prg(uint16_t addr) override
 	{
-		return cart.PRG_ROM.at(prg_ptrs[(addr >> 13) & 0x3] + (addr & 0x1FFF));
+		uint32_t index = prg_ptrs[(addr >> 13) & 0x3];
+		assert(index < cart.prg_banks * 0x4000);
+		return cart.PRG_ROM.at(index + (addr & 0x1FFF));
+	}
+	uint32_t get_prg_rom_address(uint16_t prg_addr) override
+	{
+		return prg_ptrs[(prg_addr >> 13) & 0x3] + (prg_addr & 0x1FFF);
 	}
 	void write_prg(uint16_t addr, uint8_t val) override;
 	uint8_t read_chr(uint16_t addr) override

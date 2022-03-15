@@ -17,6 +17,8 @@ public:
 	virtual void scanline() {}
 	bool generate_IRQ = false;
 
+	virtual uint32_t get_prg_rom_address(uint16_t prg_addr) { return 0; }
+
 	Cartridge& cart;
 
 };

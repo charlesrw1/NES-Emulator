@@ -2,6 +2,9 @@
 #ifndef CPU_H
 #define CPU_H
 #include "mainram.h"
+#include <vector>
+#include <string>
+
 
 struct CPU
 {
@@ -35,6 +38,11 @@ struct CPU
 	// increase cycles
 	bool extra_cycle_adr : 1;
 	bool opcode_extra_cycle : 1;
+
+
+	int log_next_cycles = 0;
+	// signals to emulator class to dump the logged cpu info in the ring_buffer
+	bool dump_log = false;
 
 	MainRAM& mem;
 
