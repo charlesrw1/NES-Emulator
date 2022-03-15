@@ -225,7 +225,7 @@ int compare_mesen_log()
 int main()
 {
 
-	Log::log_level = Info;
+	Log::log_level = CPU_Info;
 	std::ofstream log_file("bad_dump.txt");
 	Log::set_stream(&std::cout);
 
@@ -233,7 +233,7 @@ int main()
 	window.setFramerateLimit(60);
 	window.setView(sf::View(sf::FloatRect(0, 0, 256, 240)));
 	Emulator app(window);
-	if (!app.load_cartridge("loz.nes")) {
+	if (!app.load_cartridge("smb.nes")) {
 		return 1;
 	}
 
@@ -276,8 +276,8 @@ int main()
 		app.step();
 		elapsed = clock.restart();
 		int ms = elapsed.asMilliseconds();
-		if (elapsed.asMilliseconds() < 16)
-			sf::sleep(sf::milliseconds(16) - elapsed);
+		if (elapsed.asMilliseconds() < 16);
+			//sf::sleep(sf::milliseconds(16) - elapsed);
 
 	}
 	if (app.cart.battery_ram) {

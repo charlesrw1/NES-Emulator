@@ -26,8 +26,6 @@ uint8_t cpu_status(CPU& c)
 }
 void Emulator::step()
 {
-	static int cycles_since_nmi = 0;
-	static bool in_nmi = false;
 	uint64_t total_cycles = 0;
 	// About 1 frame
 	//main_ram.cont1.update();
@@ -61,8 +59,6 @@ void Emulator::step()
 		}
 		if (ppu.send_nmi_output) {
 			if (ppu.generate_NMI) {
-				LOG(CPU_Info) << "NMI ENTERED" << std::endl;
-				in_nmi = true;
 				cpu.nmi();
 			}
 			ppu.send_nmi_output = false;
@@ -73,12 +69,14 @@ void Emulator::step()
 		}
 		
 		ring_buffer.at(ring_buffer_index).save_state(*this);
+		
 		cpu.step();
+
 //>Logging
 		if(ring_buffer_elements < ring_buffer.size())
 			ring_buffer_elements += 1;
 
-		if (Log::log_status_dump) {
+		if (Log::log_status_dump && CPU_Info >= Log::log_level) {
 			Log::get_stream() << " << START LOG DUMP\n";
 			for (int i = 0; i < ring_buffer_elements; i++) {
 				ring_buffer.at((ring_buffer_index + 1 + i) % ring_buffer.size()).print(Log::get_stream());
@@ -87,25 +85,14 @@ void Emulator::step()
 			Log::log_status_dump = false;
 			Log::get_stream() << "END LOG DUMP >> START CURRENT\n";
 		}
-
-		Level state = Log::log_level;
-		if (Log::log_next_cycles > 0) {
-			Log::log_level = CPU_Info;
+		if (Log::log_next_cycles > 0 && CPU_Info >= Log::log_level) {
+			ring_buffer.at(ring_buffer_index).print(Log::get_stream());
 			Log::log_next_cycles--;
 		}
-		if (CPU_Info >= Log::log_level) {
-			ring_buffer.at(ring_buffer_index).print(Log::get_stream());
-		}
-		Log::log_level = state;
 		ring_buffer_index = (ring_buffer_index + 1) % ring_buffer.size();
 //<Logging
 
-
-
 		total_cycles += cpu.cycles;
-		if (in_nmi) {
-			cycles_since_nmi += cpu.cycles;
-		}
 	}
 }
 void EmulatorStatus::save_state(Emulator& e)

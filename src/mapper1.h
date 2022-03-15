@@ -24,6 +24,7 @@ public:
 			CHR_RAM.resize(0x2000);
 			uses_chr_ram = true;
 		}
+		cart.extended_ram.resize(0x2000);
 
 	}
 	
