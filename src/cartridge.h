@@ -13,7 +13,7 @@ struct Cartridge
 	
 	uint8_t read_extended_ram(uint16_t addr) {
 		if (extended_ram.size() == 0) {
-			LOG(Warning) << "Read attempt @ save RAM, no save RAM exists" << std::endl;
+			LOG(Debug) << "Read attempt @ save RAM, no save RAM exists" << std::endl;
 			return 0;
 		}
 		return extended_ram.at(addr - 0x6000);

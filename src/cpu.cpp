@@ -45,7 +45,6 @@ void CPU::irq()
 	// If interrupts aren't disabled
 	if (!inf)
 	{
-		LOG(CPU_Info) << "Maskable interrupt entered\n";
 		push_byte(*this, (pc >> 8) & 0xFF);
 		push_byte(*this, (pc) & 0xFF);
 		inf = 1;
@@ -62,7 +61,6 @@ void CPU::irq()
 }
 void CPU::nmi()
 {
-	//LOG(CPU_Info) << "Non-maskable interrupt entered\n";
 	push_byte(*this, (pc >> 8) & 0xFF);
 	push_byte(*this, (pc) & 0xFF);
 	inf = 1;

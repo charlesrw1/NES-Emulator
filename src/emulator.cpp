@@ -1,7 +1,7 @@
 #include "emulator.h"
 #include <sstream>
 
-//#define RING_BUFFER_LOGGING
+#define STATE_LOGGING
 
 bool Emulator::load_cartridge(std::string file)
 {
@@ -67,12 +67,15 @@ void Emulator::step()
 			cpu.irq();
 			cart.mapper->generate_IRQ = false;
 		}
-		
+
+		// Enabling this decreases performance by about .2-.4 ms every frame, not a big deal
+#ifdef STATE_LOGGING
 		ring_buffer.at(ring_buffer_index).save_state(*this);
-		
+#endif // STATE_LOGGING
+
 		cpu.step();
 
-//>Logging
+#ifdef STATE_LOGGING
 		if(ring_buffer_elements < ring_buffer.size())
 			ring_buffer_elements += 1;
 
@@ -90,7 +93,7 @@ void Emulator::step()
 			Log::log_next_cycles--;
 		}
 		ring_buffer_index = (ring_buffer_index + 1) % ring_buffer.size();
-//<Logging
+#endif // STATE_LOGGING
 
 		total_cycles += cpu.cycles;
 	}

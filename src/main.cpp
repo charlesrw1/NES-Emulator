@@ -226,23 +226,26 @@ int main()
 {
 
 	Log::log_level = CPU_Info;
-	std::ofstream log_file("bad_dump.txt");
+	std::ofstream log_file("log_dump.txt");
 	Log::set_stream(&std::cout);
 
 	sf::RenderWindow window(sf::VideoMode(256*3, 240*3), "NES-EMULATOR");
 	window.setFramerateLimit(60);
 	window.setView(sf::View(sf::FloatRect(0, 0, 256, 240)));
 	Emulator app(window);
-	if (!app.load_cartridge("smb.nes")) {
+	if (!app.load_cartridge("kirbyadventure.nes")) {
 		return 1;
 	}
 
 	app.cpu.reset();
 
-	uint64_t cycles=0;
-	VideoScreen vs(window);
 	sf::Clock clock;
 	sf::Time elapsed;
+
+	uint32_t ms_total = 0;
+	uint32_t count = 0;
+
+
 	while (window.isOpen()) 
 	{
 		sf::Event event;
@@ -264,6 +267,9 @@ int main()
 				case sf::Keyboard::Key::F3:		// hide warnings/info
 					Log::log_level = Error;
 					break;
+				case sf::Keyboard::Key::F4:		// hide warnings/info
+					Log::log_level = CPU_Info;
+					break;
 				}
 				break;
 			case sf::Event::Resized:
@@ -275,9 +281,16 @@ int main()
 		}
 		app.step();
 		elapsed = clock.restart();
-		int ms = elapsed.asMilliseconds();
-		if (elapsed.asMilliseconds() < 16);
+		ms_total += elapsed.asMilliseconds();
+		count += 1;
+		if (count > 100) {
+			printf("elapsed-ms: %f    \r", ms_total / (float)count);
+			count = 0;
+			ms_total = 0;
+		}
+		if (elapsed.asMilliseconds() < 16); {
 			//sf::sleep(sf::milliseconds(16) - elapsed);
+		}
 
 	}
 	if (app.cart.battery_ram) {

@@ -4,6 +4,7 @@
 #include "mapper0.h"
 #include "mapper1.h"
 #include "mapper4.h"
+#include "mapper2.h"
 
 bool Cartridge::load_from_file(std::string file, PPURAM& ppu_ram)
 {
@@ -78,7 +79,11 @@ bool Cartridge::load_from_file(std::string file, PPURAM& ppu_ram)
 	{
 	case 0: mapper = new Mapper0(*this); break;
 	case 1: mapper = new Mapper1(*this, ppu_ram); break;
-	case 4: mapper = new Mapper4(*this, ppu_ram); break;
+	case 2: mapper = new Mapper2(*this); break;
+	case 4: 
+		mapper = new Mapper4(*this, ppu_ram);
+		LOG(Info) << "Mapper 4 (MMC3) is buggy, may be unplayable.\n";
+		break;
 	default:
 		LOG(Error) << "Mapper # is unsupported\n";
 		return false;

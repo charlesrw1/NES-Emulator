@@ -49,7 +49,7 @@ uint8_t MainRAM::read_byte(uint16_t addr)
 		}
 	}
 	else if (addr < 0x6000) {
-		LOG(Warning) << "Bad access area\n";
+		LOG(Debug) << "Bad access area\n";
 	}
 	else if (addr >= 0x6000 && addr <= 0x7FFF) {
 		return cart.read_extended_ram(addr);
